@@ -43,6 +43,12 @@ enum PrescriptionStatus {
   CANCELLED
 }
 
+enum EncounterStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -282,7 +288,7 @@ model Encounter {
   registrationId String         @unique
   doctorId       String
   chiefComplaint String?        @db.VarChar(500)
-  status         String         @default("OPEN") @db.VarChar(40)
+  status         EncounterStatus @default(OPEN)
   startedAt      DateTime?
   completedAt    DateTime?
   createdAt      DateTime       @default(now())
@@ -291,6 +297,7 @@ model Encounter {
   doctor         DoctorProfile  @relation(fields: [doctorId], references: [id])
   medicalRecord  MedicalRecord?
   diagnoses      Diagnosis[]
+  medicalOrders  MedicalOrder[]
   prescriptions  Prescription[]
 }
 
@@ -310,6 +317,17 @@ model Diagnosis {
   code        String?   @db.VarChar(64)
   name        String    @db.VarChar(120)
   note        String?   @db.VarChar(500)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+}
+
+model MedicalOrder {
+  id          String    @id @default(cuid())
+  encounterId String
+  type        String    @db.VarChar(80)
+  content     String    @db.VarChar(500)
+  status      String    @default("ACTIVE") @db.VarChar(40)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
@@ -337,6 +355,20 @@ model PaymentOrder {
   updatedAt      DateTime      @updatedAt
   user           User          @relation(fields: [userId], references: [id])
   registration   Registration?
+  items          PaymentOrderItem[]
+}
+
+model PaymentOrderItem {
+  id             String       @id @default(cuid())
+  paymentOrderId String
+  itemType       String       @db.VarChar(64)
+  itemName       String       @db.VarChar(160)
+  quantity       Int          @default(1)
+  unitPrice      Decimal      @db.Decimal(10, 2)
+  amount         Decimal      @db.Decimal(10, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
 }
 
 model DrugCatalog {
@@ -386,6 +418,30 @@ model Announcement {
   publishedAt DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model DictionaryCategory {
+  id          String           @id @default(cuid())
+  code        String           @unique @db.VarChar(80)
+  name        String           @db.VarChar(120)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  items       DictionaryItem[]
+}
+
+model DictionaryItem {
+  id         String             @id @default(cuid())
+  categoryId String
+  code       String             @db.VarChar(80)
+  label      String             @db.VarChar(120)
+  sortOrder  Int                @default(0)
+  isActive   Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  category   DictionaryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, code])
 }
 
 model AuditLog {
