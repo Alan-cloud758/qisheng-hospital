@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-namespace */
+
 export interface AuthUser {
   id: string
   username: string
