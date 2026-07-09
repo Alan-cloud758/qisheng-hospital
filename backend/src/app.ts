@@ -1,6 +1,7 @@
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
+import { authRouter } from './routes/auth'
 
 export function createApp() {
   const app = express()
@@ -8,6 +9,8 @@ export function createApp() {
   app.use(helmet())
   app.use(cors())
   app.use(express.json())
+
+  app.use('/api/auth', authRouter)
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true, service: 'qisheng-hospital-backend' })
