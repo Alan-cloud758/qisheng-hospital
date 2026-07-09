@@ -36,6 +36,26 @@ cd ../miniapp
 npm install
 ```
 
+Backend local services:
+
+Copy `backend/.env.example` to `backend/.env`, set a real `DATABASE_URL`, then initialize Prisma and seed demo data:
+
+```bash
+cd backend
+copy .env.example .env
+npm run prisma:generate
+npm run db:push
+npm run db:seed
+```
+
+Seeded demo accounts all use password `Qisheng@123`:
+
+- `admin`: platform administrator
+- `doctor_chen`: doctor workspace
+- `cashier_lin`: cashier workspace
+- `pharmacy_wu`: pharmacy workspace
+- `patient_demo`: patient miniapp flow
+
 后端复制环境变量：
 
 ```bash
