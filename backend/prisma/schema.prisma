@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AppointmentSlotStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  BOOKED
+  CANCELLED
+  CHECKED_IN
+  IN_VISIT
+  COMPLETED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PrescriptionStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  DISPENSED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  PAY
+  CANCEL
+}
+
+model User {
+  id             String          @id @default(cuid())
+  username       String          @unique @db.VarChar(64)
+  phone          String?         @unique @db.VarChar(20)
+  email          String?         @unique @db.VarChar(120)
+  passwordHash   String          @db.VarChar(255)
+  displayName    String          @db.VarChar(80)
+  status         UserStatus      @default(ACTIVE)
+  lastLoginAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  roles          UserRole[]
+  doctorProfile  DoctorProfile?
+  patientProfile PatientProfile?
+  paymentOrders  PaymentOrder[]
+  registrations  Registration[]
+  auditLogs      AuditLog[]
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  code        String           @unique @db.VarChar(64)
+  name        String           @db.VarChar(80)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id        String           @id @default(cuid())
+  code      String           @unique @db.VarChar(120)
+  name      String           @db.VarChar(120)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  roles     RolePermission[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model Menu {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.VarChar(80)
+  title     String   @db.VarChar(80)
+  path      String   @db.VarChar(160)
+  icon      String?  @db.VarChar(80)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  parentId  String?
+  parent    Menu?    @relation("MenuTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Menu[]   @relation("MenuTree")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HospitalCampus {
+  id          String       @id @default(cuid())
+  name        String       @unique @db.VarChar(120)
+  address     String       @db.VarChar(255)
+  phone       String?      @db.VarChar(30)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  departments Department[]
+  clinicRooms ClinicRoom[]
+}
+
+model Department {
+  id            String           @id @default(cuid())
+  campusId      String
+  name          String           @db.VarChar(120)
+  code          String           @unique @db.VarChar(64)
+  summary       String?          @db.VarChar(500)
+  isActive      Boolean          @default(true)
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  campus        HospitalCampus   @relation(fields: [campusId], references: [id])
+  clinicRooms   ClinicRoom[]
+  doctors       DoctorProfile[]
+  schedules     DoctorSchedule[]
+  registrations Registration[]
+}
+
+model ClinicRoom {
+  id           String          @id @default(cuid())
+  campusId     String
+  departmentId String
+  name         String          @db.VarChar(120)
+  floor        String?         @db.VarChar(40)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  campus       HospitalCampus  @relation(fields: [campusId], references: [id])
+  department   Department      @relation(fields: [departmentId], references: [id])
+  schedules    DoctorSchedule[]
+}
+
+model DoctorProfile {
+  id             String           @id @default(cuid())
+  userId         String           @unique
+  departmentId   String
+  employeeNo     String           @unique @db.VarChar(64)
+  title          String           @db.VarChar(80)
+  specialty      String           @db.VarChar(255)
+  introduction   String?          @db.VarChar(1000)
+  licenseNo      String?          @db.VarChar(120)
+  avatarUrl      String?          @db.VarChar(500)
+  consultationFee Decimal         @default(20.00) @db.Decimal(10, 2)
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id])
+  department     Department       @relation(fields: [departmentId], references: [id])
+  schedules      DoctorSchedule[]
+  registrations  Registration[]
+  encounters     Encounter[]
+  prescriptions  Prescription[]
+}
+
+model PatientProfile {
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  patientNo    String        @unique @db.VarChar(64)
+  realName     String        @db.VarChar(80)
+  gender       String?       @db.VarChar(20)
+  birthday     DateTime?
+  idCardNo     String?       @db.VarChar(32)
+  phone        String?       @db.VarChar(30)
+  healthNote   String?       @db.VarChar(500)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id])
+  visitMembers VisitMember[]
+}
+
+model VisitMember {
+  id              String         @id @default(cuid())
+  patientId       String
+  name            String         @db.VarChar(80)
+  gender          String?        @db.VarChar(20)
+  birthday        DateTime?
+  idCardNo        String?        @db.VarChar(32)
+  phone           String?        @db.VarChar(30)
+  relationship    String         @default("SELF") @db.VarChar(40)
+  isDefault       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  registrations   Registration[]
+}
+
+model DoctorSchedule {
+  id           String            @id @default(cuid())
+  doctorId     String
+  departmentId String
+  clinicRoomId String?
+  workDate     DateTime
+  period        String            @db.VarChar(40)
+  capacity      Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  doctor        DoctorProfile     @relation(fields: [doctorId], references: [id])
+  department    Department        @relation(fields: [departmentId], references: [id])
+  clinicRoom    ClinicRoom?       @relation(fields: [clinicRoomId], references: [id], onDelete: SetNull)
+  slots         AppointmentSlot[]
+}
+
+model AppointmentSlot {
+  id             String                @id @default(cuid())
+  scheduleId     String
+  startTime      DateTime
+  endTime        DateTime
+  fee            Decimal               @default(20.00) @db.Decimal(10, 2)
+  status         AppointmentSlotStatus @default(AVAILABLE)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  schedule       DoctorSchedule        @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  registration   Registration?
+}
+
+model Registration {
+  id             String             @id @default(cuid())
+  registrationNo String             @unique @db.VarChar(64)
+  status         RegistrationStatus @default(BOOKED)
+  userId         String
+  visitMemberId  String
+  departmentId   String
+  doctorId       String
+  slotId         String             @unique
+  paymentOrderId String?            @unique
+  checkedInAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User               @relation(fields: [userId], references: [id])
+  visitMember    VisitMember        @relation(fields: [visitMemberId], references: [id])
+  department     Department         @relation(fields: [departmentId], references: [id])
+  doctor         DoctorProfile      @relation(fields: [doctorId], references: [id])
+  slot           AppointmentSlot    @relation(fields: [slotId], references: [id])
+  paymentOrder   PaymentOrder?      @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+  encounter      Encounter?
+}
+
+model Encounter {
+  id             String         @id @default(cuid())
+  registrationId String         @unique
+  doctorId       String
+  chiefComplaint String?        @db.VarChar(500)
+  status         String         @default("OPEN") @db.VarChar(40)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  registration   Registration   @relation(fields: [registrationId], references: [id])
+  doctor         DoctorProfile  @relation(fields: [doctorId], references: [id])
+  medicalRecord  MedicalRecord?
+  diagnoses      Diagnosis[]
+  prescriptions  Prescription[]
+}
+
+model MedicalRecord {
+  id          String    @id @default(cuid())
+  encounterId String    @unique
+  summary     String    @db.VarChar(1000)
+  advice      String?   @db.VarChar(1000)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+}
+
+model Diagnosis {
+  id          String    @id @default(cuid())
+  encounterId String
+  code        String?   @db.VarChar(64)
+  name        String    @db.VarChar(120)
+  note        String?   @db.VarChar(500)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+}
+
+model FeeItem {
+  id          String   @id @default(cuid())
+  code        String   @unique @db.VarChar(64)
+  name        String   @db.VarChar(120)
+  amount      Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PaymentOrder {
+  id             String        @id @default(cuid())
+  orderNo        String        @unique @db.VarChar(64)
+  title          String        @db.VarChar(160)
+  amount         Decimal       @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  userId         String
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id])
+  registration   Registration?
+}
+
+model DrugCatalog {
+  id          String             @id @default(cuid())
+  code        String             @unique @db.VarChar(64)
+  name        String             @db.VarChar(160)
+  spec        String             @db.VarChar(120)
+  unit        String             @db.VarChar(40)
+  price       Decimal            @db.Decimal(10, 2)
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  items       PrescriptionItem[]
+}
+
+model Prescription {
+  id          String             @id @default(cuid())
+  encounterId String?
+  doctorId    String
+  status      PrescriptionStatus @default(DRAFT)
+  note        String?            @db.VarChar(500)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  encounter   Encounter?         @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  doctor      DoctorProfile      @relation(fields: [doctorId], references: [id])
+  items       PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  drugId         String
+  quantity       Int
+  dosage         String       @db.VarChar(120)
+  usage          String       @db.VarChar(120)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  drug           DrugCatalog  @relation(fields: [drugId], references: [id])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(160)
+  content     String   @db.VarChar(1000)
+  isActive    Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String?
+  action    AuditAction
+  resource  String      @db.VarChar(120)
+  resourceId String?    @db.VarChar(120)
+  detail    String?     @db.VarChar(1000)
+  ip        String?     @db.VarChar(80)
+  createdAt DateTime    @default(now())
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
