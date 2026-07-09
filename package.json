@@ -1,0 +1,24 @@
+{
+  "name": "qisheng-hospital",
+  "private": true,
+  "version": "0.1.0",
+  "description": "启胜医院多端医疗平台",
+  "scripts": {
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:test": "npm --prefix backend run test",
+    "backend:lint": "npm --prefix backend run lint",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:test": "npm --prefix frontend run test",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "miniapp:dev:h5": "npm --prefix miniapp run dev:h5",
+    "miniapp:dev:mp-weixin": "npm --prefix miniapp run dev:mp-weixin",
+    "miniapp:build:h5": "npm --prefix miniapp run build:h5",
+    "miniapp:build:mp-weixin": "npm --prefix miniapp run build:mp-weixin",
+    "miniapp:typecheck": "npm --prefix miniapp run typecheck",
+    "test": "npm run backend:test && npm run frontend:test",
+    "lint": "npm run backend:lint && npm run frontend:lint",
+    "build": "npm run backend:build && npm run frontend:build && npm run miniapp:typecheck"
+  }
+}
