@@ -23,6 +23,7 @@ export interface DoctorScheduleSlot {
   date: string
   startTime: string
   endTime: string
+  lockedUntil?: string | null
   fee: number
   department?: { id: string; name: string }
   clinicRoom?: { id: string; name: string; floor?: string }
@@ -91,6 +92,14 @@ export function setDefaultVisitMember(id: string) {
 
 export function createRegistration(data: { slotId: string; visitMemberId: string }) {
   return request<{ item: Registration }>('/mini/registrations', { method: 'POST', data })
+}
+
+export function lockAppointmentSlot(id: string) {
+  return request<{ item: DoctorScheduleSlot }>('/mini/slots/' + id + '/lock', { method: 'POST' })
+}
+
+export function rescheduleRegistration(id: string, slotId: string) {
+  return request<{ item: Registration }>('/mini/registrations/' + id + '/reschedule', { method: 'POST', data: { slotId } })
 }
 
 export function cancelRegistration(id: string) {

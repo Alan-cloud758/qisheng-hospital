@@ -9,7 +9,9 @@ import {
   fetchRegistrations,
   fetchVisitMembers,
   fetchVisitRecords,
+  lockAppointmentSlot,
   loginPatient,
+  rescheduleRegistration,
   setDefaultVisitMember,
   type Announcement,
   type DepartmentSummary,
@@ -98,6 +100,15 @@ export const usePatientStore = defineStore('patient', {
       await this.loadRegistrations()
       return response.item
     },
+    async lockSelectedSlot() {
+      await this.ensureLogin()
+      if (!this.selectedSlot) {
+        throw new Error('请选择号源')
+      }
+      const response = await lockAppointmentSlot(this.selectedSlot.id)
+      this.selectedSlot = { ...this.selectedSlot, ...response.item }
+      return response.item
+    },
     async loadRegistrations() {
       await this.ensureLogin()
       const response = await fetchRegistrations()
@@ -106,6 +117,14 @@ export const usePatientStore = defineStore('patient', {
     async cancelRegistration(id: string) {
       await this.ensureLogin()
       await cancelRegistration(id)
+      await this.loadRegistrations()
+    },
+    async rescheduleRegistration(id: string) {
+      await this.ensureLogin()
+      if (!this.selectedSlot) {
+        throw new Error('请选择新号源')
+      }
+      await rescheduleRegistration(id, this.selectedSlot.id)
       await this.loadRegistrations()
     },
     async loadVisitRecords() {

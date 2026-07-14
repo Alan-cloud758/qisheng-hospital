@@ -1,10 +1,12 @@
 import { Router } from 'express'
-import { RegistrationStatus } from '../generated/prisma/enums'
+import { z } from 'zod'
+import { AuditAction, RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
 import type { AdminDelegate, AdminResourceConfig } from '../services/admin-crud'
 import { hashAccountPassword, registerAdminResourceRoutes } from '../services/admin-crud'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
+import { generateSchedulesFromTemplate, markNoShow, suspendSchedule } from '../services/scheduling'
 
 export const adminRouter = Router()
 
@@ -130,6 +132,164 @@ const adminResources: Record<string, AdminResourceConfig> = {
 
 registerAdminResourceRoutes(adminRouter, adminResources)
 
+const scheduleTemplateSchema = z.object({
+  name: z.string().min(1),
+  doctorId: z.string().min(1),
+  departmentId: z.string().min(1),
+  clinicRoomId: z.string().optional().nullable(),
+  period: z.string().min(1),
+  capacity: z.coerce.number().int().min(1),
+  isActive: z.boolean().optional(),
+  rules: z
+    .array(
+      z.object({
+        weekday: z.coerce.number().int().min(0).max(6),
+        startTime: z.string().min(1),
+        endTime: z.string().min(1),
+      }),
+    )
+    .default([]),
+})
+
+adminRouter.get('/schedule-templates', async (req, res, next) => {
+  try {
+    const templates = await prisma.scheduleTemplate.findMany({
+      include: { doctor: { include: { user: true } }, department: true, clinicRoom: true, rules: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+
+    res.json({ items: templates })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/schedule-templates', async (req, res, next) => {
+  try {
+    const input = scheduleTemplateSchema.parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const template = await tx.scheduleTemplate.create({
+        data: {
+          name: input.name,
+          doctorId: input.doctorId,
+          departmentId: input.departmentId,
+          clinicRoomId: input.clinicRoomId || null,
+          period: input.period,
+          capacity: input.capacity,
+          isActive: input.isActive ?? true,
+          rules: { create: input.rules },
+        },
+        include: { doctor: { include: { user: true } }, department: true, clinicRoom: true, rules: true },
+      })
+
+      await tx.auditLog.create({
+        data: { userId: req.user?.id, action: AuditAction.CREATE, resource: 'schedule-template', resourceId: template.id, detail: 'Created schedule template' },
+      })
+
+      return template
+    })
+
+    res.status(201).json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.put('/schedule-templates/:id', async (req, res, next) => {
+  try {
+    const input = scheduleTemplateSchema.partial().parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const template = await tx.scheduleTemplate.update({
+        where: { id: req.params.id },
+        data: {
+          name: input.name,
+          doctorId: input.doctorId,
+          departmentId: input.departmentId,
+          clinicRoomId: input.clinicRoomId,
+          period: input.period,
+          capacity: input.capacity,
+          isActive: input.isActive,
+          ...(input.rules
+            ? {
+                rules: {
+                  deleteMany: {},
+                  create: input.rules,
+                },
+              }
+            : {}),
+        },
+        include: { doctor: { include: { user: true } }, department: true, clinicRoom: true, rules: true },
+      })
+
+      await tx.auditLog.create({
+        data: { userId: req.user?.id, action: AuditAction.UPDATE, resource: 'schedule-template', resourceId: req.params.id, detail: 'Updated schedule template' },
+      })
+
+      return template
+    })
+
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/schedule-templates/:id/generate', async (req, res, next) => {
+  try {
+    const input = z.object({ startDate: z.coerce.date(), endDate: z.coerce.date() }).parse(req.body)
+    const items = await generateSchedulesFromTemplate(req.params.id, input.startDate, input.endDate, req.user?.id)
+    res.json({ items })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+adminRouter.post('/schedules/:id/suspend', async (req, res, next) => {
+  try {
+    const input = z.object({ reason: z.string().min(1) }).parse(req.body)
+    const item = await suspendSchedule(req.params.id, input.reason, req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+adminRouter.post('/registrations/:id/no-show', async (req, res, next) => {
+  try {
+    const input = z.object({ reason: z.string().min(1) }).parse(req.body)
+    const item = await markNoShow(req.params.id, input.reason, req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+adminRouter.get('/slot-stats', async (_req, res, next) => {
+  try {
+    const grouped = await prisma.appointmentSlot.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    })
+
+    res.json({ items: grouped.map((item) => ({ status: item.status, count: item._count._all })) })
+  } catch (error) {
+    next(error)
+  }
+})
+
 adminRouter.get('/dashboard', async (_req, res, next) => {
   try {
     const [departmentCount, doctorCount, registrationCount, pendingPaymentCount, prescriptionCount, patientCount] = await Promise.all([
@@ -200,13 +360,25 @@ adminRouter.get('/visit-members', async (_req, res, next) => {
 
 adminRouter.get('/registrations', async (_req, res, next) => {
   try {
+    const status = typeof _req.query.status === 'string' && _req.query.status ? _req.query.status : undefined
+    if (status && !Object.values(RegistrationStatus).includes(status as RegistrationStatus)) {
+      res.status(400).json({ message: 'Invalid registration status' })
+      return
+    }
+
     const registrations = await prisma.registration.findMany({
+      where: status ? { status: status as RegistrationStatus } : undefined,
       include: {
         department: true,
         doctor: { include: { user: true } },
         visitMember: true,
         slot: true,
         paymentOrder: true,
+        changeLogs: {
+          where: { action: 'RESCHEDULE' },
+          orderBy: { createdAt: 'desc' },
+          include: { fromSlot: true, toSlot: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })

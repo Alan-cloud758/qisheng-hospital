@@ -14,6 +14,10 @@ function cancel(id: string) {
   void store.cancelRegistration(id)
 }
 
+function reschedule(id: string) {
+  void store.rescheduleRegistration(id)
+}
+
 onMounted(() => {
   void store.loadRegistrations()
 })
@@ -31,6 +35,7 @@ onMounted(() => {
       <text class="muted">{{ item.visitMember?.name }}｜{{ timeText(item) }}</text>
       <text class="status">{{ registrationStatusText(item.status) }}</text>
       <button v-if="item.status === 'BOOKED'" class="plain" @tap="cancel(item.id)">取消预约</button>
+      <button v-if="item.status === 'BOOKED' && store.selectedSlot" class="plain" @tap="reschedule(item.id)">改约为已选号源</button>
     </view>
   </view>
 </template>

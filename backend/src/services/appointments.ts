@@ -1,5 +1,6 @@
 import { AppointmentSlotStatus, PaymentStatus, RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
+import { assertCanUseLockedSlot } from './scheduling'
 
 export async function bookAppointment(input: { userId: string; visitMemberId: string; slotId: string }) {
   return prisma.$transaction(async (tx) => {
@@ -15,7 +16,16 @@ export async function bookAppointment(input: { userId: string; visitMemberId: st
       },
     })
 
-    if (!slot || slot.status !== AppointmentSlotStatus.AVAILABLE) {
+    if (!slot) {
+      throw new Error('号源不可预约')
+    }
+
+    if (slot.status === AppointmentSlotStatus.LOCKED) {
+      assertCanUseLockedSlot(new Date(), slot.lockedUntil)
+      if (slot.lockedByUserId !== input.userId) {
+        throw new Error('号源已被其他用户锁定')
+      }
+    } else if (slot.status !== AppointmentSlotStatus.AVAILABLE) {
       throw new Error('号源不可预约')
     }
 
@@ -29,7 +39,7 @@ export async function bookAppointment(input: { userId: string; visitMemberId: st
 
     await tx.appointmentSlot.update({
       where: { id: slot.id },
-      data: { status: AppointmentSlotStatus.BOOKED },
+      data: { status: AppointmentSlotStatus.BOOKED, lockedUntil: null, lockedByUserId: null },
     })
 
     const payment = await tx.paymentOrder.create({

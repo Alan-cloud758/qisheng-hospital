@@ -20,3 +20,12 @@ export function appointmentStatusText(status: string) {
 
   return map[status] ?? status
 }
+
+export function lockCountdownText(now: Date, lockedUntil?: string | null) {
+  if (!lockedUntil) return ''
+  const remaining = new Date(lockedUntil).getTime() - now.getTime()
+  if (remaining <= 0) return '锁号已过期'
+  const minutes = Math.floor(remaining / 60000)
+  const seconds = Math.floor((remaining % 60000) / 1000)
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}

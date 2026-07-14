@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma'
 import { auth } from '../middleware/auth'
 import { bookAppointment } from '../services/appointments'
 import { assertCanCancelRegistration } from '../services/outpatient-state'
+import { lockSlot, rescheduleRegistration } from '../services/scheduling'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -147,7 +148,37 @@ miniRouter.post('/registrations', async (req, res, next) => {
 
     res.status(201).json({ item: registration })
   } catch (error) {
-    if (error instanceof Error && ['号源不可预约', '就诊人不存在'].includes(error.message)) {
+    if (
+      error instanceof Error &&
+      ['号源不可预约', '就诊人不存在', '号源已被其他用户锁定', 'Slot lock has expired', 'Slot is locked by another user'].includes(error.message)
+    ) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+miniRouter.post('/slots/:id/lock', async (req, res, next) => {
+  try {
+    const item = await lockSlot(req.params.id, req.user!.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+miniRouter.post('/registrations/:id/reschedule', async (req, res, next) => {
+  try {
+    const input = z.object({ slotId: z.string().min(1) }).parse(req.body)
+    const item = await rescheduleRegistration(req.params.id, input.slotId, req.user!.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
       res.status(400).json({ message: error.message })
       return
     }

@@ -41,8 +41,8 @@ export async function fetchDoctors() {
   return response.data.items
 }
 
-export async function fetchRegistrations() {
-  const response = await apiClient.get<{ items: unknown[] }>('/admin/registrations')
+export async function fetchRegistrations(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/registrations', { params })
   return response.data.items
 }
 
@@ -73,6 +73,31 @@ export async function toggleAdminResource(resource: string, id: string) {
 
 export async function checkInRegistration(id: string) {
   const response = await apiClient.post<{ item: unknown }>(`/admin/registrations/${id}/check-in`)
+  return response.data.item
+}
+
+export async function fetchScheduleTemplates() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/schedule-templates')
+  return response.data.items
+}
+
+export async function createScheduleTemplate(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/admin/schedule-templates', data)
+  return response.data.item
+}
+
+export async function generateScheduleTemplate(id: string, data: { startDate: string; endDate: string }) {
+  const response = await apiClient.post<{ items: unknown[] }>(`/admin/schedule-templates/${id}/generate`, data)
+  return response.data.items
+}
+
+export async function suspendSchedule(id: string, reason: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/schedules/${id}/suspend`, { reason })
+  return response.data.item
+}
+
+export async function markRegistrationNoShow(id: string, reason: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/registrations/${id}/no-show`, { reason })
   return response.data.item
 }
 

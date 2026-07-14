@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { AppointmentSlotStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
+import { releaseExpiredSlotLocks } from '../services/scheduling'
 
 export const publicRouter = Router()
 
@@ -137,6 +138,7 @@ publicRouter.get('/doctors/:id', async (req, res, next) => {
 
 publicRouter.get('/doctors/:id/slots', async (req, res, next) => {
   try {
+    await releaseExpiredSlotLocks()
     const slots = await prisma.appointmentSlot.findMany({
       where: {
         status: AppointmentSlotStatus.AVAILABLE,
