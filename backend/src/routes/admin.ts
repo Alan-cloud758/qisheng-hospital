@@ -6,6 +6,13 @@ import { auth, requireRole } from '../middleware/auth'
 import type { AdminDelegate, AdminResourceConfig } from '../services/admin-crud'
 import { hashAccountPassword, registerAdminResourceRoutes } from '../services/admin-crud'
 import { validatePrescriptionDraft } from '../services/clinical-quality'
+import {
+  getOutpatientDashboard,
+  getOverviewDashboard,
+  getPharmacyAlertsDashboard,
+  getQueuePressureDashboard,
+  getRevenueDashboard,
+} from '../services/dashboard'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
 import { listStockAlerts } from '../services/pharmacy-inventory'
 import { checkInRegistrationWithQueue } from '../services/queue'
@@ -190,6 +197,70 @@ const prescriptionTemplateSchema = z.object({
       }),
     )
     .default([]),
+})
+
+export function parseDashboardDate(value: unknown, endOfDay = false) {
+  if (typeof value !== 'string' || value.trim() === '') return undefined
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly
+    return endOfDay
+      ? new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+      : new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date
+}
+
+function dashboardFilters(req: Parameters<Parameters<typeof adminRouter.get>[1]>[0]) {
+  return {
+    startDate: parseDashboardDate(req.query.startDate),
+    endDate: parseDashboardDate(req.query.endDate, true),
+    campusId: typeof req.query.campusId === 'string' ? req.query.campusId : undefined,
+    departmentId: typeof req.query.departmentId === 'string' ? req.query.departmentId : undefined,
+    doctorId: typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined,
+  }
+}
+
+adminRouter.get('/dashboard/overview', async (req, res, next) => {
+  try {
+    res.json({ item: await getOverviewDashboard(dashboardFilters(req)) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/dashboard/outpatient', async (req, res, next) => {
+  try {
+    res.json({ item: await getOutpatientDashboard(dashboardFilters(req)) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/dashboard/revenue', async (req, res, next) => {
+  try {
+    res.json({ item: await getRevenueDashboard(dashboardFilters(req)) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/dashboard/pharmacy-alerts', async (req, res, next) => {
+  try {
+    res.json({ item: await getPharmacyAlertsDashboard(dashboardFilters(req)) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/dashboard/queue-pressure', async (req, res, next) => {
+  try {
+    res.json({ item: await getQueuePressureDashboard(dashboardFilters(req)) })
+  } catch (error) {
+    next(error)
+  }
 })
 
 adminRouter.get('/medical-record-templates', async (_req, res, next) => {

@@ -31,6 +31,31 @@ export async function fetchDashboard() {
   return response.data.summary
 }
 
+export async function fetchDashboardOverview(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/overview', { params })
+  return response.data.item
+}
+
+export async function fetchDashboardOutpatient(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/outpatient', { params })
+  return response.data.item
+}
+
+export async function fetchDashboardRevenue(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/revenue', { params })
+  return response.data.item
+}
+
+export async function fetchDashboardPharmacyAlerts(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/pharmacy-alerts', { params })
+  return response.data.item
+}
+
+export async function fetchDashboardQueuePressure(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/queue-pressure', { params })
+  return response.data.item
+}
+
 export async function fetchDepartments() {
   const response = await apiClient.get<{ items: unknown[] }>('/admin/departments')
   return response.data.items
