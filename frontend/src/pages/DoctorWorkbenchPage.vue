@@ -101,6 +101,16 @@
         </div>
 
         <div>
+          <h3>影像申请</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.imagingItemIds" multiple filterable placeholder="选择影像项目">
+              <el-option v-for="item in imagingItems" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <el-button type="primary" @click="createImagingRequest">开影像</el-button>
+          </div>
+        </div>
+
+        <div>
           <h3>处方模板</h3>
           <div class="template-row">
             <el-select v-model="templateForm.prescriptionTemplateId" filterable placeholder="选择处方模板">
@@ -135,10 +145,12 @@ import {
   callNextQueuePatient,
   completeEncounter,
   createEncounterDiagnosis,
+  createEncounterImagingRequest,
   createEncounterOrder,
   createEncounterLabRequest,
   createPrescriptionFromTemplate,
   fetchDoctorClinicalTemplates,
+  fetchDoctorImagingItems,
   fetchDoctorLabItems,
   fetchDoctorQueue,
   fetchDoctorQueueTickets,
@@ -158,6 +170,11 @@ interface TemplateRow {
 }
 
 interface LabItemRow {
+  id: string
+  name: string
+}
+
+interface ImagingItemRow {
   id: string
   name: string
 }
@@ -189,6 +206,7 @@ const loading = ref(false)
 const rows = ref<DoctorQueueRow[]>([])
 const queueTickets = ref<QueueTicketRow[]>([])
 const labItems = ref<LabItemRow[]>([])
+const imagingItems = ref<ImagingItemRow[]>([])
 const templateVisible = ref(false)
 const selectedEncounter = ref<DoctorQueueRow['encounter'] | null>(null)
 const selectedEncounterId = ref('')
@@ -203,16 +221,24 @@ const templateForm = reactive({
   diagnosisId: '',
   orderId: '',
   labItemIds: [] as string[],
+  imagingItemIds: [] as string[],
   prescriptionTemplateId: '',
 })
 
 async function load() {
   loading.value = true
   try {
-    const [queue, tickets, templates, lab] = await Promise.all([fetchDoctorQueue(), fetchDoctorQueueTickets(), fetchDoctorClinicalTemplates(), fetchDoctorLabItems()])
+    const [queue, tickets, templates, lab, imaging] = await Promise.all([
+      fetchDoctorQueue(),
+      fetchDoctorQueueTickets(),
+      fetchDoctorClinicalTemplates(),
+      fetchDoctorLabItems(),
+      fetchDoctorImagingItems(),
+    ])
     rows.value = queue as DoctorQueueRow[]
     queueTickets.value = tickets as QueueTicketRow[]
     labItems.value = lab as LabItemRow[]
+    imagingItems.value = imaging as ImagingItemRow[]
     templateData.recordTemplates = templates.recordTemplates as TemplateRow[]
     templateData.diagnoses = templates.diagnoses as TemplateRow[]
     templateData.orders = templates.orders as TemplateRow[]
@@ -290,6 +316,13 @@ async function createLabRequest() {
   if (!selectedEncounter.value || templateForm.labItemIds.length === 0) return
   await createEncounterLabRequest(selectedEncounter.value.id, { itemIds: templateForm.labItemIds })
   templateForm.labItemIds = []
+  await load()
+}
+
+async function createImagingRequest() {
+  if (!selectedEncounter.value || templateForm.imagingItemIds.length === 0) return
+  await createEncounterImagingRequest(selectedEncounter.value.id, { itemIds: templateForm.imagingItemIds })
+  templateForm.imagingItemIds = []
   await load()
 }
 

@@ -29,6 +29,7 @@
           <h2>住院医嘱</h2>
           <div class="section-actions">
             <el-button size="small" @click="labVisible = true">开检验</el-button>
+            <el-button size="small" @click="imagingVisible = true">开影像</el-button>
             <el-button size="small" type="primary" @click="orderVisible = true">新增医嘱</el-button>
           </div>
         </div>
@@ -103,12 +104,35 @@
         <el-button type="primary" @click="submitLabRequest">提交</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="imagingVisible" title="开影像" width="520px">
+      <el-form label-width="86px">
+        <el-form-item label="影像项目">
+          <el-select v-model="imagingForm.itemIds" multiple filterable>
+            <el-option v-for="item in imagingItems" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注"><el-input v-model="imagingForm.clinicalNote" type="textarea" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="imagingVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitImagingRequest">提交</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { createInpatientLabRequest, createInpatientOrder, fetchDoctorInpatients, fetchDoctorLabItems, requestInpatientDischarge } from '../api/hospital'
+import {
+  createInpatientImagingRequest,
+  createInpatientLabRequest,
+  createInpatientOrder,
+  fetchDoctorImagingItems,
+  fetchDoctorInpatients,
+  fetchDoctorLabItems,
+  requestInpatientDischarge,
+} from '../api/hospital'
 
 interface AdmissionRow {
   id: string
@@ -128,23 +152,32 @@ interface LabItemRow {
   name: string
 }
 
+interface ImagingItemRow {
+  id: string
+  name: string
+}
+
 const loading = ref(false)
 const rows = ref<AdmissionRow[]>([])
 const selected = ref<AdmissionRow | null>(null)
 const labItems = ref<LabItemRow[]>([])
+const imagingItems = ref<ImagingItemRow[]>([])
 const orderVisible = ref(false)
 const dischargeVisible = ref(false)
 const labVisible = ref(false)
+const imagingVisible = ref(false)
 const orderForm = reactive({ type: 'LONG_TERM', content: '', doctorId: '' })
 const dischargeForm = reactive({ reason: '' })
 const labForm = reactive({ itemIds: [] as string[], clinicalNote: '' })
+const imagingForm = reactive({ itemIds: [] as string[], clinicalNote: '' })
 
 async function load() {
   loading.value = true
   try {
-    const [admissions, items] = await Promise.all([fetchDoctorInpatients(), fetchDoctorLabItems()])
+    const [admissions, items, imaging] = await Promise.all([fetchDoctorInpatients(), fetchDoctorLabItems(), fetchDoctorImagingItems()])
     rows.value = admissions as AdmissionRow[]
     labItems.value = items as LabItemRow[]
+    imagingItems.value = imaging as ImagingItemRow[]
     selected.value = selected.value ? rows.value.find((row) => row.id === selected.value?.id) ?? rows.value[0] ?? null : rows.value[0] ?? null
   } finally {
     loading.value = false
@@ -181,6 +214,15 @@ async function submitLabRequest() {
   labVisible.value = false
   labForm.itemIds = []
   labForm.clinicalNote = ''
+  await load()
+}
+
+async function submitImagingRequest() {
+  if (!selected.value || imagingForm.itemIds.length === 0) return
+  await createInpatientImagingRequest(selected.value.id, { itemIds: imagingForm.itemIds, clinicalNote: imagingForm.clinicalNote })
+  imagingVisible.value = false
+  imagingForm.itemIds = []
+  imagingForm.clinicalNote = ''
   await load()
 }
 

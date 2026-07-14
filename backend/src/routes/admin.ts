@@ -66,6 +66,17 @@ function normalizeLabItem(data: Record<string, unknown>) {
   return next
 }
 
+function normalizeImagingItem(data: Record<string, unknown>) {
+  const next = { ...data }
+  const price = normalizeOptionalDecimal(next.price)
+  if (price === undefined) {
+    delete next.price
+  } else {
+    next.price = price
+  }
+  return next
+}
+
 const adminResources: Record<string, AdminResourceConfig> = {
   accounts: {
     delegate: prisma.user as unknown as AdminDelegate,
@@ -200,6 +211,14 @@ const adminResources: Record<string, AdminResourceConfig> = {
     orderBy: { code: 'asc' },
     activeField: 'isActive',
     beforeWrite: normalizeLabItem,
+  },
+  'imaging-items': {
+    delegate: prisma.imagingExamItem as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'modality', 'bodyPart'],
+    writableFields: ['code', 'name', 'modality', 'bodyPart', 'price', 'isActive'],
+    orderBy: { code: 'asc' },
+    activeField: 'isActive',
+    beforeWrite: normalizeImagingItem,
   },
   announcements: {
     delegate: prisma.announcement as unknown as AdminDelegate,

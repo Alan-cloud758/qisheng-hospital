@@ -131,6 +131,20 @@ export interface LabReport {
   }>
 }
 
+export interface ImagingReport {
+  id: string
+  status: string
+  findings?: string | null
+  impression?: string | null
+  publishedAt?: string | null
+  request?: {
+    requestNo: string
+    source: string
+    items?: Array<{ item?: { name?: string; modality?: string; bodyPart?: string } }>
+    study?: { studyUid?: string; imageUrl?: string }
+  }
+}
+
 export function loginPatient(username = 'patient_demo', password = 'Qisheng@123') {
   return request<{ token: string; user: unknown }>('/auth/login', {
     method: 'POST',
@@ -228,4 +242,8 @@ export function fetchInpatientAdmissions() {
 
 export function fetchLabReports() {
   return request<{ items: LabReport[] }>('/mini/lab-reports')
+}
+
+export function fetchImagingReports() {
+  return request<{ items: ImagingReport[] }>('/mini/imaging-reports')
 }

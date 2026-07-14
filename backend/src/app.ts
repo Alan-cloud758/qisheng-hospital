@@ -7,6 +7,7 @@ import { labRouter } from './routes/lab'
 import { miniRouter } from './routes/mini'
 import { nurseRouter } from './routes/nurse'
 import { publicRouter } from './routes/public'
+import { radiologyRouter } from './routes/radiology'
 import { staffRouter } from './routes/staff'
 
 export function createApp() {
@@ -22,6 +23,7 @@ export function createApp() {
   app.use('/api/admin', adminRouter)
   app.use('/api/staff/nurse', nurseRouter)
   app.use('/api/staff/lab', labRouter)
+  app.use('/api/staff/radiology', radiologyRouter)
   app.use('/api/staff', staffRouter)
 
   app.get('/healthz', (_req, res) => {

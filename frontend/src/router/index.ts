@@ -11,6 +11,7 @@ import DrugStockMovementsPage from '../pages/DrugStockMovementsPage.vue'
 import DrugStockPage from '../pages/DrugStockPage.vue'
 import InpatientAdmissionsPage from '../pages/InpatientAdmissionsPage.vue'
 import InpatientDetailPage from '../pages/InpatientDetailPage.vue'
+import ImagingItemsPage from '../pages/ImagingItemsPage.vue'
 import InsuranceLogsPage from '../pages/InsuranceLogsPage.vue'
 import InsuranceMappingsPage from '../pages/InsuranceMappingsPage.vue'
 import InsuranceProfilesPage from '../pages/InsuranceProfilesPage.vue'
@@ -21,6 +22,7 @@ import LoginPage from '../pages/LoginPage.vue'
 import ModuleListPage from '../pages/ModuleListPage.vue'
 import PaymentHistoryPage from '../pages/PaymentHistoryPage.vue'
 import PharmacyWorkbenchPage from '../pages/PharmacyWorkbenchPage.vue'
+import RadiologyWorkbenchPage from '../pages/RadiologyWorkbenchPage.vue'
 import RegistrationsPage from '../pages/RegistrationsPage.vue'
 import SchedulesPage from '../pages/SchedulesPage.vue'
 import { pinia, useAuthStore } from '../stores/auth'
@@ -180,6 +182,8 @@ export const routes: RouteRecordRaw[] = [
       { path: 'insurance-logs', component: InsuranceLogsPage },
       { path: 'lab-items', component: LabItemsPage },
       { path: 'lab', component: LabWorkbenchPage },
+      { path: 'imaging-items', component: ImagingItemsPage },
+      { path: 'radiology', component: RadiologyWorkbenchPage },
       adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },

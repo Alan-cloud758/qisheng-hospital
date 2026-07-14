@@ -20,6 +20,7 @@ import { createInpatientOrder, requestDischarge } from '../services/inpatient'
 import { preSettleOrder, reverseSettlement, settleOrder } from '../services/insurance'
 import { createLabRequestForEncounter, createLabRequestForInpatient } from '../services/lab'
 import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
+import { createImagingRequestForEncounter, createImagingRequestForInpatient } from '../services/radiology'
 import {
   adjustStock,
   damageStock,
@@ -56,6 +57,11 @@ const inpatientOrderSchema = z.object({
 })
 
 const labRequestSchema = z.object({
+  itemIds: z.array(z.string().min(1)).min(1),
+  clinicalNote: z.string().optional(),
+})
+
+const imagingRequestSchema = z.object({
   itemIds: z.array(z.string().min(1)).min(1),
   clinicalNote: z.string().optional(),
 })
@@ -257,6 +263,15 @@ staffRouter.get('/doctor/clinical-templates', requireRole('DOCTOR', 'ADMIN'), as
 staffRouter.get('/doctor/lab-items', requireRole('DOCTOR', 'ADMIN'), async (_req, res, next) => {
   try {
     const items = await prisma.labTestItem.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, take: 300 })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+staffRouter.get('/doctor/imaging-items', requireRole('DOCTOR', 'ADMIN'), async (_req, res, next) => {
+  try {
+    const items = await prisma.imagingExamItem.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, take: 300 })
     res.json({ items })
   } catch (error) {
     next(error)
@@ -466,6 +481,22 @@ staffRouter.post('/doctor/encounters/:id/lab-requests', requireRole('DOCTOR', 'A
   }
 })
 
+staffRouter.post('/doctor/encounters/:id/imaging-requests', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = imagingRequestSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const encounter = await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
+    const item = await createImagingRequestForEncounter(encounter.id, input, doctor?.id ?? encounter.doctorId)
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
 staffRouter.post('/doctor/encounters/:id/apply-record-template', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
   try {
     const input = templateActionSchema.parse(req.body)
@@ -609,6 +640,22 @@ staffRouter.post('/doctor/inpatients/:id/lab-requests', requireRole('DOCTOR', 'A
     const doctor = await requireDoctorProfileForRequest(req)
     const admission = await findInpatientForDoctor(routeId(req.params.id), doctor?.id)
     const item = await createLabRequestForInpatient(admission.id, { ...input, doctorId: doctor?.id ?? admission.attendingDoctorId ?? undefined })
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/inpatients/:id/imaging-requests', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = imagingRequestSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const admission = await findInpatientForDoctor(routeId(req.params.id), doctor?.id)
+    const item = await createImagingRequestForInpatient(admission.id, { ...input, doctorId: doctor?.id ?? admission.attendingDoctorId ?? undefined })
     res.status(201).json({ item })
   } catch (error) {
     if (error instanceof Error) {

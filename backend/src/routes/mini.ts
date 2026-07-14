@@ -10,6 +10,7 @@ import { mockPayOrder } from '../services/payment'
 import { createAppointmentNotification, favoriteDoctor, unfavoriteDoctor } from '../services/queue'
 import { insuranceForOrder } from '../services/insurance'
 import { getPublishedReportsForPatient } from '../services/lab'
+import { getPublishedImagingReportsForPatient } from '../services/radiology'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -463,6 +464,15 @@ miniRouter.get('/fees/:id/insurance', async (req, res, next) => {
 miniRouter.get('/lab-reports', async (req, res, next) => {
   try {
     const items = await getPublishedReportsForPatient(req.user!.id)
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+miniRouter.get('/imaging-reports', async (req, res, next) => {
+  try {
+    const items = await getPublishedImagingReportsForPatient(req.user!.id)
     res.json({ items })
   } catch (error) {
     next(error)

@@ -181,6 +181,31 @@ enum LabReportStatus {
   PUBLISHED
 }
 
+enum ImagingRequestStatus {
+  REQUESTED
+  SCHEDULED
+  CHECKED_IN
+  COMPLETED
+  REPORTED
+  REVIEWED
+  PUBLISHED
+  CANCELLED
+}
+
+enum ImagingAppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+}
+
+enum ImagingReportStatus {
+  DRAFT
+  REPORTED
+  REVIEWED
+  PUBLISHED
+}
+
 model User {
   id             String          @id @default(cuid())
   username       String          @unique @db.VarChar(64)
@@ -210,6 +235,7 @@ model User {
   dischargeApprovals DischargeRequest[] @relation("DischargeApprover")
   insuranceProfiles InsuranceProfile[]
   labRequests LabRequest[]
+  imagingRequests ImagingRequest[]
 }
 
 model Role {
@@ -345,6 +371,7 @@ model DoctorProfile {
   inpatientOrders InpatientOrder[]
   dischargeRequests DischargeRequest[]
   labRequests LabRequest[]
+  imagingRequests ImagingRequest[]
 }
 
 model PatientProfile {
@@ -568,6 +595,7 @@ model Encounter {
   medicalOrders  MedicalOrder[]
   prescriptions  Prescription[]
   labRequests    LabRequest[]
+  imagingRequests ImagingRequest[]
 }
 
 model MedicalRecord {
@@ -700,6 +728,7 @@ model InpatientAdmission {
   charges           InpatientCharge[]
   dischargeRequests DischargeRequest[]
   labRequests       LabRequest[]
+  imagingRequests   ImagingRequest[]
 
   @@index([userId, status, createdAt])
   @@index([visitMemberId, status])
@@ -1052,6 +1081,111 @@ model LabProviderLog {
   success   Boolean     @default(true)
   createdAt DateTime    @default(now())
   labRequest LabRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+}
+
+model ImagingExamItem {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.VarChar(64)
+  name      String   @db.VarChar(160)
+  modality  String   @db.VarChar(40)
+  bodyPart  String   @db.VarChar(120)
+  price     Decimal  @default(0.00) @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  requestItems ImagingRequestItem[]
+}
+
+model ImagingRequest {
+  id           String               @id @default(cuid())
+  requestNo    String               @unique @db.VarChar(80)
+  status       ImagingRequestStatus @default(REQUESTED)
+  userId       String
+  visitMemberId String?
+  doctorId     String?
+  encounterId  String?
+  admissionId  String?
+  source       InsuranceSettlementSource @default(OUTPATIENT)
+  clinicalNote String?              @db.VarChar(500)
+  requestedAt  DateTime             @default(now())
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  user         User                 @relation(fields: [userId], references: [id])
+  doctor       DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  encounter    Encounter?           @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  admission    InpatientAdmission?  @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  items        ImagingRequestItem[]
+  appointment  ImagingAppointment?
+  study        ImagingStudy?
+  report       ImagingReport?
+  logs         PacsProviderLog[]
+
+  @@index([userId, status, createdAt])
+  @@index([encounterId])
+  @@index([admissionId])
+}
+
+model ImagingRequestItem {
+  id        String          @id @default(cuid())
+  requestId String
+  itemId    String
+  createdAt DateTime        @default(now())
+  request   ImagingRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  item      ImagingExamItem @relation(fields: [itemId], references: [id])
+
+  @@unique([requestId, itemId])
+}
+
+model ImagingAppointment {
+  id          String                   @id @default(cuid())
+  requestId   String                   @unique
+  status      ImagingAppointmentStatus @default(SCHEDULED)
+  scheduledAt DateTime
+  room        String?                  @db.VarChar(80)
+  checkedInAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  request     ImagingRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model ImagingStudy {
+  id          String         @id @default(cuid())
+  requestId   String         @unique
+  studyUid    String         @unique @db.VarChar(160)
+  imageUrl    String         @db.VarChar(500)
+  modality    String?        @db.VarChar(40)
+  performedAt DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  request     ImagingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model ImagingReport {
+  id          String              @id @default(cuid())
+  requestId   String              @unique
+  status      ImagingReportStatus @default(DRAFT)
+  findings    String?             @db.VarChar(1000)
+  impression  String?             @db.VarChar(1000)
+  reviewedAt  DateTime?
+  publishedAt DateTime?
+  reviewerId  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  request     ImagingRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model PacsProviderLog {
+  id        String          @id @default(cuid())
+  requestId String?
+  action    String          @db.VarChar(40)
+  request   Json?
+  response  Json?
+  success   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  imagingRequest ImagingRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
 
   @@index([requestId, createdAt])
 }

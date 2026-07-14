@@ -8,6 +8,7 @@ import {
   fetchDoctors,
   fetchFeeInsurance,
   fetchFees,
+  fetchImagingReports,
   fetchInpatientAdmissions,
   fetchLabReports,
   fetchNotifications,
@@ -28,6 +29,7 @@ import {
   type DoctorScheduleSlot,
   type DoctorSummary,
   type FeeOrder,
+  type ImagingReport,
   type InpatientAdmission,
   type LabReport,
   type PatientNotification,
@@ -48,6 +50,7 @@ export const usePatientStore = defineStore('patient', {
     fees: [] as FeeOrder[],
     inpatientAdmissions: [] as InpatientAdmission[],
     labReports: [] as LabReport[],
+    imagingReports: [] as ImagingReport[],
     notifications: [] as PatientNotification[],
     queueTickets: [] as QueueTicket[],
     selectedDoctorId: '',
@@ -201,6 +204,11 @@ export const usePatientStore = defineStore('patient', {
       await this.ensureLogin()
       const response = await fetchLabReports()
       this.labReports = response.items
+    },
+    async loadImagingReports() {
+      await this.ensureLogin()
+      const response = await fetchImagingReports()
+      this.imagingReports = response.items
     },
   },
 })

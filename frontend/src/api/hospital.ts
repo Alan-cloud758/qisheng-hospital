@@ -202,13 +202,28 @@ export async function fetchDoctorLabItems() {
   return response.data.items
 }
 
+export async function fetchDoctorImagingItems() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/imaging-items')
+  return response.data.items
+}
+
 export async function createEncounterLabRequest(encounterId: string, data: { itemIds: string[]; clinicalNote?: string }) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/lab-requests`, data)
   return response.data.item
 }
 
+export async function createEncounterImagingRequest(encounterId: string, data: { itemIds: string[]; clinicalNote?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/imaging-requests`, data)
+  return response.data.item
+}
+
 export async function createInpatientLabRequest(admissionId: string, data: { itemIds: string[]; clinicalNote?: string; doctorId?: string }) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/inpatients/${admissionId}/lab-requests`, data)
+  return response.data.item
+}
+
+export async function createInpatientImagingRequest(admissionId: string, data: { itemIds: string[]; clinicalNote?: string; doctorId?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/inpatients/${admissionId}/imaging-requests`, data)
   return response.data.item
 }
 
@@ -244,6 +259,41 @@ export async function reviewLabReport(reportId: string) {
 
 export async function publishLabReport(reportId: string) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/lab/reports/${reportId}/publish`, {})
+  return response.data.item
+}
+
+export async function fetchImagingRequests() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/radiology/requests')
+  return response.data.items
+}
+
+export async function scheduleImagingRequest(requestId: string, data: { scheduledAt: string; room?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/requests/${requestId}/schedule`, data)
+  return response.data.item
+}
+
+export async function checkInImagingAppointment(appointmentId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/appointments/${appointmentId}/check-in`, {})
+  return response.data.item
+}
+
+export async function completeImagingStudy(appointmentId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/appointments/${appointmentId}/complete`, {})
+  return response.data.item
+}
+
+export async function recordImagingReport(reportId: string, data: { findings: string; impression: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/reports/${reportId}/record`, data)
+  return response.data.item
+}
+
+export async function reviewImagingReport(reportId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/reports/${reportId}/review`, {})
+  return response.data.item
+}
+
+export async function publishImagingReport(reportId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/radiology/reports/${reportId}/publish`, {})
   return response.data.item
 }
 
