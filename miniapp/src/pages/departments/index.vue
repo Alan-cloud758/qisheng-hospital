@@ -4,29 +4,26 @@ import { usePatientStore } from '../../stores/patient'
 
 const store = usePatientStore()
 
+function openDoctors(departmentId: string) {
+  uni.navigateTo({ url: '/pages/doctors/index?departmentId=' + departmentId })
+}
+
 onMounted(() => {
   void store.loadDepartments()
 })
-
-function openDoctor(doctorId: string) {
-  uni.navigateTo({ url: '/pages/doctors/index?doctorId=' + doctorId })
-}
 </script>
 
 <template>
   <view class="page">
     <view class="panel page-head">
-      <text class="title">????</text>
-      <text class="muted">??????????????</text>
+      <text class="title">选择科室</text>
+      <text class="muted">按科室查看医生和可预约号源。</text>
     </view>
 
-    <view v-for="department in store.departments" :key="department.id" class="panel department-card">
+    <view v-for="department in store.departments" :key="department.id" class="panel department-card" @tap="openDoctors(department.id)">
       <text class="name">{{ department.name }}</text>
-      <text class="muted">{{ department.description || '????' }}</text>
-      <view class="doctor-row" v-for="doctor in department.doctors" :key="doctor.id" @tap="openDoctor(doctor.id)">
-        <text>{{ doctor.name }}</text>
-        <text class="muted">{{ doctor.title }}</text>
-      </view>
+      <text class="muted">{{ department.summary || '门诊科室' }}</text>
+      <text class="campus">{{ department.campus?.name || '启胜医院' }}</text>
     </view>
   </view>
 </template>
@@ -48,11 +45,9 @@ function openDoctor(doctorId: string) {
   margin-bottom: 12rpx;
 }
 
-.doctor-row {
-  display: flex;
-  justify-content: space-between;
-  border-top: 1rpx solid #eef3f1;
-  margin-top: 18rpx;
-  padding-top: 18rpx;
+.campus {
+  color: #126c5b;
+  display: block;
+  margin-top: 14rpx;
 }
 </style>

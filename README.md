@@ -1,29 +1,28 @@
 # 启胜医院
 
-启胜医院是一个多端医院医疗平台示例项目，工程形态类比 `美贸商城`，但业务模型从医院场景重新设计。
+启胜医院是一个多端门诊医疗平台示例项目，包含：
 
-## 项目结构
-
-- `backend/`：Express + Prisma 后端服务，提供鉴权、医院组织、排班挂号、患者端、员工工作台和健康检查 API。
-- `frontend/`：Vue 3 + Vite Web 管理端，面向管理员、医生、收费员、药房等工作人员。
-- `miniapp/`：uni-app 患者端，面向 H5 和微信小程序。
+- `backend/`：Express 5 + TypeScript + Prisma + MySQL/MariaDB API。
+- `frontend/`：Vue 3 + Vite + Element Plus Web 管理端。
+- `miniapp/`：uni-app 患者端，支持 H5 和微信小程序构建。
 - `docs/`：设计文档和实施计划。
-- `deploy/`：部署说明和环境准备资料。
+- `deploy/`：部署说明。
 
-## 技术栈
+## 已覆盖业务模块
 
-- 后端：Express 5、TypeScript、Prisma、MySQL/MariaDB、Redis、Zod、Vitest、Supertest。
-- Web 前端：Vue 3、Vite、Element Plus、Pinia、Vue Router、Vitest、Vue Test Utils。
-- 小程序：uni-app、Vue、Pinia、TypeScript、Vitest、vue-tsc。
-
-## 远端仓库
-
-- GitHub：`https://github.com/Alan-cloud758/qisheng-hospital.git`
-- Gitee：`https://gitee.com/li-zhuo-xuan/qisheng-hospital.git`
+- 系统管理：账号、角色、菜单、审计日志。
+- 医院组织：院区、科室、诊室、医生档案。
+- 患者中心：患者档案、就诊人、就诊记录。
+- 排班挂号：医生排班、号源、预约、签到、取消。
+- 医生工作台：待接诊队列、开始接诊、病历、诊断、医嘱、处方、完成就诊。
+- 收费工作台：待支付订单、模拟收费、支付记录、费用项目。
+- 药房工作台：处方列表、审核、发药、药品目录。
+- 运营配置：公告、数据字典、平台总览。
+- 患者端：首页、科室、医生号源、预约确认、我的预约、就诊人、就诊记录。
 
 ## 本地准备
 
-根目录不使用 npm workspace，需要分别进入三端安装依赖：
+根目录不使用 npm workspace，需要分别安装依赖：
 
 ```bash
 cd backend
@@ -36,38 +35,48 @@ cd ../miniapp
 npm install
 ```
 
-Backend local services:
-
-Copy `backend/.env.example` to `backend/.env`, set a real `DATABASE_URL`, then initialize Prisma and seed demo data:
+复制后端环境变量：
 
 ```bash
 cd backend
 copy .env.example .env
+```
+
+设置 `backend/.env` 中的 `DATABASE_URL`，然后初始化数据库和样例数据：
+
+```bash
 npm run prisma:generate
 npm run db:push
 npm run db:seed
 ```
 
-Seeded demo accounts all use password `Qisheng@123`:
+`db:seed` 是幂等的，可重复运行。它会写入大量门诊演示数据，包括 3 个院区、16 个科室、24 位医生、16 个患者账号、300+ 个号源、30 条挂号、20 条处方、30+ 条审计日志、药品、费用项目、公告和数据字典。
 
-- `admin`: platform administrator
-- `doctor_chen`: doctor workspace
-- `cashier_lin`: cashier workspace
-- `pharmacy_wu`: pharmacy workspace
-- `patient_demo`: patient miniapp flow
+## 演示账号
 
-后端复制环境变量：
+所有演示账号密码均为：
 
-```bash
-cd backend
-copy .env.example .env
+```text
+Qisheng@123
 ```
 
-关键环境变量：
+- `admin`：平台管理员。
+- `doctor_chen`：医生工作台。
+- `cashier_lin`：收费工作台。
+- `pharmacy_wu`：药房工作台。
+- `patient_demo`：患者端演示账号。
 
-- `AUTH_SECRET`：登录令牌签名密钥，至少 32 个字符。
-- `DATABASE_URL`：MySQL/MariaDB 连接串。
-- `REDIS_ENABLED` / `REDIS_URL`：Redis 缓存、限流和后续会话能力配置。
+## 完整门诊演示流程
+
+1. 运行 `backend` 数据库初始化和 `db:seed`。
+2. 启动后端：`npm run backend:dev`。
+3. 启动管理端：`npm run frontend:dev`，使用 `admin` 登录查看各模块数据。
+4. 患者端使用 `patient_demo` 自动演示登录，选择科室、医生和号源提交预约。
+5. 管理端在“预约签到”中对 `BOOKED` 记录签到。
+6. 医生账号在“医生工作台”开始接诊并完成门诊。
+7. 收费员账号在“收费工作台”执行模拟收费。
+8. 药房账号在“药房工作台”审核处方并发药。
+9. 患者端在“我的预约”和“就诊记录”查看状态。
 
 ## 常用命令
 
@@ -77,8 +86,8 @@ copy .env.example .env
 npm run backend:dev
 npm run frontend:dev
 npm run miniapp:dev:h5
-npm run test
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -94,7 +103,7 @@ npm run db:push
 npm run db:seed
 ```
 
-Web 前端：
+Web 管理端：
 
 ```bash
 cd frontend
@@ -112,17 +121,6 @@ npm run dev:h5
 npm run dev:mp-weixin
 npm run build:h5
 npm run build:mp-weixin
+npm run test
 npm run typecheck
 ```
-
-## 启动顺序
-
-1. 启动 MySQL/MariaDB，并确保 `backend/.env` 中的 `DATABASE_URL` 可连接。
-2. 在 `backend/` 运行 `npm run db:push` 和 `npm run db:seed` 初始化数据。
-3. 在 `backend/` 运行 `npm run dev` 启动 API，默认端口 `3000`。
-4. 在 `frontend/` 运行 `npm run dev` 启动 Web 管理端，默认端口 `5173`。
-5. 小程序开发时在 `miniapp/` 运行对应的 `dev:*` 命令。
-
-## 第一阶段闭环
-
-第一阶段目标是跑通患者端选择科室、医生和号源完成预约，后台查看预约，医生看到待就诊，收费员看到模拟支付订单的完整平台骨架。

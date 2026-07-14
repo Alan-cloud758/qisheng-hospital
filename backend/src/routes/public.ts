@@ -24,6 +24,31 @@ publicRouter.get('/departments', async (_req, res, next) => {
   }
 })
 
+publicRouter.get('/departments/:id', async (req, res, next) => {
+  try {
+    const department = await prisma.department.findUnique({
+      where: { id: req.params.id },
+      include: {
+        campus: true,
+        doctors: {
+          where: { isActive: true },
+          include: { user: { select: { id: true, displayName: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    })
+
+    if (!department || !department.isActive) {
+      res.status(404).json({ message: '科室不存在' })
+      return
+    }
+
+    res.json({ item: department })
+  } catch (error) {
+    next(error)
+  }
+})
+
 publicRouter.get('/departments/:id/doctors', async (req, res, next) => {
   try {
     const doctors = await prisma.doctorProfile.findMany({
@@ -45,6 +70,65 @@ publicRouter.get('/departments/:id/doctors', async (req, res, next) => {
         consultationFee: Number(doctor.consultationFee),
         department: doctor.department,
       })),
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+publicRouter.get('/doctors', async (req, res, next) => {
+  try {
+    const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId : undefined
+    const doctors = await prisma.doctorProfile.findMany({
+      where: { isActive: true, ...(departmentId ? { departmentId } : {}) },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: { select: { id: true, displayName: true } },
+        department: { select: { id: true, name: true } },
+      },
+    })
+
+    res.json({
+      items: doctors.map((doctor) => ({
+        id: doctor.id,
+        name: doctor.user.displayName,
+        title: doctor.title,
+        specialty: doctor.specialty,
+        introduction: doctor.introduction,
+        consultationFee: Number(doctor.consultationFee),
+        department: doctor.department,
+      })),
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+publicRouter.get('/doctors/:id', async (req, res, next) => {
+  try {
+    const doctor = await prisma.doctorProfile.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: { select: { id: true, displayName: true } },
+        department: { include: { campus: true } },
+      },
+    })
+
+    if (!doctor || !doctor.isActive) {
+      res.status(404).json({ message: '医生不存在' })
+      return
+    }
+
+    res.json({
+      item: {
+        id: doctor.id,
+        name: doctor.user.displayName,
+        title: doctor.title,
+        specialty: doctor.specialty,
+        introduction: doctor.introduction,
+        consultationFee: Number(doctor.consultationFee),
+        department: doctor.department,
+      },
     })
   } catch (error) {
     next(error)

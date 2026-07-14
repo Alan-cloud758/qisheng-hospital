@@ -10,12 +10,12 @@ export function formatAppointmentWindow(startAt: string, endAt: string) {
 
 export function appointmentStatusText(status: string) {
   const map: Record<string, string> = {
-    BOOKED: '???',
-    CANCELLED: '???',
-    CHECKED_IN: '???',
-    IN_VISIT: '???',
-    COMPLETED: '???',
-    NO_SHOW: '??',
+    BOOKED: '已预约',
+    CANCELLED: '已取消',
+    CHECKED_IN: '已签到',
+    IN_VISIT: '就诊中',
+    COMPLETED: '已完成',
+    NO_SHOW: '爽约',
   }
 
   return map[status] ?? status

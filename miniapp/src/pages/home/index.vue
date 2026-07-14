@@ -1,21 +1,30 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { usePatientStore } from '../../stores/patient'
+
+const store = usePatientStore()
+
 const shortcuts = [
-  { label: '????', path: '/pages/departments/index' },
-  { label: '????', path: '/pages/appointments/index' },
-  { label: '???', path: '/pages/members/index' },
+  { label: '预约挂号', path: '/pages/departments/index' },
+  { label: '我的预约', path: '/pages/appointments/index' },
+  { label: '就诊人', path: '/pages/members/index' },
 ]
 
 function navigateTo(path: string) {
   uni.navigateTo({ url: path })
 }
+
+onMounted(() => {
+  void store.loadHome()
+})
 </script>
 
 <template>
   <view class="page home-page">
     <view class="hero">
       <text class="eyebrow">QiSheng Hospital</text>
-      <text class="title">????</text>
-      <text class="subtitle">??????????????</text>
+      <text class="title">启胜医院</text>
+      <text class="subtitle">在线预约、门诊缴费、处方与就诊记录查询</text>
     </view>
 
     <view class="shortcut-grid">
@@ -25,8 +34,19 @@ function navigateTo(path: string) {
     </view>
 
     <view class="panel">
-      <text class="section-title">????</text>
-      <text class="muted">?? 08:00-17:30??? 24 ?????</text>
+      <text class="section-title">推荐科室</text>
+      <view v-for="department in store.departments.slice(0, 6)" :key="department.id" class="row" @tap="navigateTo('/pages/doctors/index?departmentId=' + department.id)">
+        <text>{{ department.name }}</text>
+        <text class="muted">{{ department.campus?.name || '启胜医院' }}</text>
+      </view>
+    </view>
+
+    <view class="panel">
+      <text class="section-title">医院公告</text>
+      <view v-for="item in store.announcements.slice(0, 3)" :key="item.id" class="notice">
+        <text>{{ item.title }}</text>
+        <text class="muted">{{ item.content }}</text>
+      </view>
     </view>
   </view>
 </template>
@@ -34,9 +54,9 @@ function navigateTo(path: string) {
 <style scoped>
 .hero {
   background: #0f6b5c;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   color: #fff;
-  padding: 40rpx;
+  padding: 42rpx;
   margin-bottom: 24rpx;
 }
 
@@ -53,13 +73,9 @@ function navigateTo(path: string) {
 }
 
 .title {
-  font-size: 44rpx;
+  font-size: 46rpx;
   font-weight: 700;
   margin: 10rpx 0;
-}
-
-.subtitle {
-  font-size: 28rpx;
 }
 
 .shortcut-grid {
@@ -77,5 +93,13 @@ function navigateTo(path: string) {
   font-size: 32rpx;
   font-weight: 700;
   margin-bottom: 12rpx;
+}
+
+.row,
+.notice {
+  border-top: 1rpx solid #eef3f1;
+  display: grid;
+  gap: 6rpx;
+  padding: 18rpx 0;
 }
 </style>

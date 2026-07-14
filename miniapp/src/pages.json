@@ -1,23 +1,24 @@
 {
   "pages": [
-    { "path": "pages/home/index", "style": { "navigationBarTitleText": "????" } },
-    { "path": "pages/departments/index", "style": { "navigationBarTitleText": "??" } },
-    { "path": "pages/doctors/index", "style": { "navigationBarTitleText": "??" } },
-    { "path": "pages/appointment/index", "style": { "navigationBarTitleText": "????" } },
-    { "path": "pages/appointments/index", "style": { "navigationBarTitleText": "????" } },
-    { "path": "pages/members/index", "style": { "navigationBarTitleText": "???" } },
-    { "path": "pages/me/index", "style": { "navigationBarTitleText": "??" } },
-    { "path": "pages/payment-result/index", "style": { "navigationBarTitleText": "????" } }
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "启胜医院" } },
+    { "path": "pages/departments/index", "style": { "navigationBarTitleText": "选择科室" } },
+    { "path": "pages/doctors/index", "style": { "navigationBarTitleText": "选择医生" } },
+    { "path": "pages/appointment/index", "style": { "navigationBarTitleText": "确认预约" } },
+    { "path": "pages/appointments/index", "style": { "navigationBarTitleText": "我的预约" } },
+    { "path": "pages/members/index", "style": { "navigationBarTitleText": "就诊人" } },
+    { "path": "pages/visit-records/index", "style": { "navigationBarTitleText": "就诊记录" } },
+    { "path": "pages/me/index", "style": { "navigationBarTitleText": "我的" } },
+    { "path": "pages/payment-result/index", "style": { "navigationBarTitleText": "预约结果" } }
   ],
   "tabBar": {
     "color": "#6b7280",
     "selectedColor": "#126c5b",
     "backgroundColor": "#ffffff",
     "list": [
-      { "pagePath": "pages/home/index", "text": "??" },
-      { "pagePath": "pages/departments/index", "text": "??" },
-      { "pagePath": "pages/appointments/index", "text": "??" },
-      { "pagePath": "pages/me/index", "text": "??" }
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/departments/index", "text": "科室" },
+      { "pagePath": "pages/appointments/index", "text": "预约" },
+      { "pagePath": "pages/me/index", "text": "我的" }
     ]
   }
 }

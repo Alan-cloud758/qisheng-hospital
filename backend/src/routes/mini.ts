@@ -1,9 +1,10 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { PaymentStatus } from '../generated/prisma/enums'
+import { AppointmentSlotStatus, PaymentStatus, RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
 import { auth } from '../middleware/auth'
 import { bookAppointment } from '../services/appointments'
+import { assertCanCancelRegistration } from '../services/outpatient-state'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -64,6 +65,57 @@ miniRouter.post('/visit-members', async (req, res, next) => {
   }
 })
 
+miniRouter.put('/visit-members/:id', async (req, res, next) => {
+  try {
+    const input = visitMemberSchema.partial().parse(req.body)
+    const member = await prisma.visitMember.findFirst({
+      where: { id: req.params.id, patient: { userId: req.user!.id } },
+    })
+
+    if (!member) {
+      res.status(404).json({ message: '就诊人不存在' })
+      return
+    }
+
+    const item = await prisma.visitMember.update({
+      where: { id: member.id },
+      data: input,
+    })
+
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+miniRouter.post('/visit-members/:id/default', async (req, res, next) => {
+  try {
+    const member = await prisma.visitMember.findFirst({
+      where: { id: req.params.id, patient: { userId: req.user!.id } },
+      include: { patient: true },
+    })
+
+    if (!member) {
+      res.status(404).json({ message: '就诊人不存在' })
+      return
+    }
+
+    await prisma.visitMember.updateMany({
+      where: { patientId: member.patientId },
+      data: { isDefault: false },
+    })
+
+    const item = await prisma.visitMember.update({
+      where: { id: member.id },
+      data: { isDefault: true },
+    })
+
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
 miniRouter.get('/registrations', async (req, res, next) => {
   try {
     const registrations = await prisma.registration.findMany({
@@ -99,6 +151,70 @@ miniRouter.post('/registrations', async (req, res, next) => {
       res.status(400).json({ message: error.message })
       return
     }
+    next(error)
+  }
+})
+
+miniRouter.post('/registrations/:id/cancel', async (req, res, next) => {
+  try {
+    const registration = await prisma.registration.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+      include: { slot: true },
+    })
+
+    if (!registration) {
+      res.status(404).json({ message: '预约记录不存在' })
+      return
+    }
+
+    assertCanCancelRegistration(registration.status)
+
+    const item = await prisma.$transaction(async (tx) => {
+      await tx.appointmentSlot.update({
+        where: { id: registration.slotId },
+        data: { status: AppointmentSlotStatus.AVAILABLE },
+      })
+
+      return tx.registration.update({
+        where: { id: registration.id },
+        data: { status: RegistrationStatus.CANCELLED, cancelledAt: new Date() },
+        include: {
+          department: true,
+          doctor: { include: { user: true } },
+          slot: true,
+          paymentOrder: true,
+          visitMember: true,
+        },
+      })
+    })
+
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+miniRouter.get('/visit-records', async (req, res, next) => {
+  try {
+    const records = await prisma.encounter.findMany({
+      where: { registration: { userId: req.user!.id } },
+      include: {
+        registration: { include: { department: true, doctor: { include: { user: true } }, visitMember: true, slot: true } },
+        medicalRecord: true,
+        diagnoses: true,
+        medicalOrders: true,
+        prescriptions: { include: { items: { include: { drug: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+
+    res.json({ items: records })
+  } catch (error) {
     next(error)
   }
 })

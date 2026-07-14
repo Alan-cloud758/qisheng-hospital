@@ -1,18 +1,24 @@
 <template>
   <section class="page-shell">
-    <div>
-      <h1 class="page-title">启胜医院平台总览</h1>
-      <p class="page-subtitle">查看今日预约、医生排班、收费待办和运营基础数据。</p>
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">Outpatient Command Center</p>
+        <h1 class="page-title">启胜医院运营总览</h1>
+        <p class="page-subtitle">集中查看科室、医生、挂号、待收费、处方和患者档案数据。</p>
+      </div>
+      <el-button @click="load">刷新</el-button>
     </div>
+
     <div class="metric-grid">
       <article v-for="metric in metrics" :key="metric.label" class="metric">
         <span>{{ metric.label }}</span>
         <strong>{{ metric.value }}</strong>
       </article>
     </div>
+
     <section class="panel">
       <h2>今日工作提醒</h2>
-      <el-table :data="reminders" border>
+      <el-table :data="reminders" border stripe>
         <el-table-column label="事项" prop="title" />
         <el-table-column label="工作台" prop="workspace" width="160" />
         <el-table-column label="状态" prop="status" width="120" />
@@ -22,17 +28,40 @@
 </template>
 
 <script setup lang="ts">
-const metrics = [
-  { label: '科室数量', value: 3 },
-  { label: '在线医生', value: 1 },
-  { label: '今日预约', value: 1 },
-  { label: '待支付订单', value: 0 },
-]
+import { computed, onMounted, ref } from 'vue'
+import { fetchDashboard, type DashboardSummary } from '../api/hospital'
 
-const reminders = [
-  { title: '陈明医生上午门诊号源已开放', workspace: '排班挂号', status: '正常' },
-  { title: '患者端线上预约入口可用', workspace: '小程序', status: '正常' },
-]
+const summary = ref<DashboardSummary>({
+  departmentCount: 0,
+  doctorCount: 0,
+  registrationCount: 0,
+  pendingPaymentCount: 0,
+  prescriptionCount: 0,
+  patientCount: 0,
+})
+
+const metrics = computed(() => [
+  { label: '科室数量', value: summary.value.departmentCount },
+  { label: '医生档案', value: summary.value.doctorCount },
+  { label: '挂号记录', value: summary.value.registrationCount },
+  { label: '待收费订单', value: summary.value.pendingPaymentCount },
+  { label: '处方记录', value: summary.value.prescriptionCount },
+  { label: '患者档案', value: summary.value.patientCount },
+])
+
+const reminders = computed(() => [
+  { title: `当前有 ${summary.value.pendingPaymentCount} 个待收费订单`, workspace: '收费工作台', status: '待处理' },
+  { title: `已维护 ${summary.value.doctorCount} 位医生档案`, workspace: '医院组织', status: '正常' },
+  { title: `累计 ${summary.value.registrationCount} 条挂号记录`, workspace: '排班挂号', status: '运行中' },
+])
+
+async function load() {
+  summary.value = await fetchDashboard()
+}
+
+onMounted(() => {
+  void load()
+})
 </script>
 
 <style scoped>

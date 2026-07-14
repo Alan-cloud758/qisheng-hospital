@@ -7,9 +7,9 @@ function openAppointments() {
 <template>
   <view class="page">
     <view class="panel result">
-      <text class="title">?????</text>
-      <text class="muted">??????????????????</text>
-      <button class="primary" @tap="openAppointments">????</button>
+      <text class="title">预约已提交</text>
+      <text class="muted">系统已生成挂号记录和待支付订单，请在我的预约中查看状态。</text>
+      <button class="primary" @tap="openAppointments">查看我的预约</button>
     </view>
   </view>
 </template>

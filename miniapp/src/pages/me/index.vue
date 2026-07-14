@@ -7,11 +7,11 @@ function navigateTo(path: string) {
 <template>
   <view class="page">
     <view class="panel profile">
-      <text class="title">??</text>
-      <text class="muted">patient_demo</text>
+      <text class="title">我的</text>
+      <text class="muted">演示患者：patient_demo</text>
     </view>
-    <view class="panel nav" @tap="navigateTo('/pages/members/index')">?????</view>
-    <view class="panel nav" @tap="navigateTo('/pages/appointments/index')">????</view>
+    <view class="panel nav" @tap="navigateTo('/pages/members/index')">就诊人管理</view>
+    <view class="panel nav" @tap="navigateTo('/pages/appointments/index')">我的预约</view>
   </view>
 </template>
 

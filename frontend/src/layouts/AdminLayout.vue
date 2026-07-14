@@ -3,17 +3,18 @@
     <aside class="sidebar">
       <div class="brand">
         <strong>启胜医院</strong>
-        <span>医疗平台</span>
+        <span>门诊运营平台</span>
       </div>
       <nav class="nav">
         <RouterLink v-for="item in navItems" :key="item.path" :to="item.path">{{ item.label }}</RouterLink>
       </nav>
     </aside>
+
     <main class="main">
       <header class="topbar">
         <div>
           <strong>{{ authStore.user?.displayName || '医院工作人员' }}</strong>
-          <span>当前工作台</span>
+          <span>{{ authStore.user?.roles?.join(' / ') || '未登录' }}</span>
         </div>
         <el-button @click="logout">退出</el-button>
       </header>
@@ -30,12 +31,20 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const navItems = [
-  { path: '/', label: '平台总览' },
-  { path: '/departments', label: '医院组织' },
-  { path: '/schedules', label: '排班挂号' },
-  { path: '/registrations', label: '预约列表' },
-  { path: '/doctor', label: '门诊工作台' },
+  { path: '/', label: '运营总览' },
+  { path: '/accounts', label: '账号角色' },
+  { path: '/departments', label: '科室管理' },
+  { path: '/doctors', label: '医生档案' },
+  { path: '/patients', label: '患者中心' },
+  { path: '/schedules', label: '排班管理' },
+  { path: '/registrations', label: '预约签到' },
+  { path: '/doctor', label: '医生工作台' },
   { path: '/cashier', label: '收费工作台' },
+  { path: '/pharmacy', label: '药房工作台' },
+  { path: '/drugs', label: '药品目录' },
+  { path: '/announcements', label: '公告配置' },
+  { path: '/dictionaries', label: '数据字典' },
+  { path: '/audit', label: '审计日志' },
 ]
 
 function logout() {
@@ -47,51 +56,55 @@ function logout() {
 <style scoped>
 .admin-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .sidebar {
-  border-right: 1px solid #d8e4df;
-  background: #10231f;
+  border-right: 1px solid rgba(172, 189, 184, 0.45);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(70, 178, 154, 0.22), transparent 32%),
+    linear-gradient(180deg, #112821 0%, #0c1916 100%);
   color: #eef8f4;
-  padding: 20px 14px;
+  padding: 22px 16px;
 }
 
 .brand {
   display: grid;
   gap: 4px;
   margin-bottom: 24px;
+  padding: 0 8px;
 }
 
 .brand strong {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .brand span {
-  color: #9fb8af;
+  color: #a9c5bb;
   font-size: 13px;
 }
 
 .nav {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .nav a {
-  border-radius: 8px;
+  border-radius: 12px;
   color: #d7e6df;
   padding: 10px 12px;
 }
 
 .nav a.router-link-active {
-  background: #1f6f63;
+  background: #1f7a68;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   color: #ffffff;
 }
 
 .main {
   min-width: 0;
-  padding: 20px;
+  padding: 22px;
 }
 
 .topbar {
@@ -111,13 +124,9 @@ function logout() {
   font-size: 13px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .admin-layout {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
   }
 }
 </style>

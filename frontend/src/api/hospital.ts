@@ -17,6 +17,8 @@ export interface DashboardSummary {
   doctorCount: number
   registrationCount: number
   pendingPaymentCount: number
+  prescriptionCount: number
+  patientCount: number
 }
 
 export async function login(username: string, password: string) {
@@ -42,4 +44,54 @@ export async function fetchDoctors() {
 export async function fetchRegistrations() {
   const response = await apiClient.get<{ items: unknown[] }>('/admin/registrations')
   return response.data.items
+}
+
+export async function fetchAdminResource(path: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/${path}`)
+  return response.data.items
+}
+
+export async function checkInRegistration(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/registrations/${id}/check-in`)
+  return response.data.item
+}
+
+export async function fetchDoctorQueue() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/queue')
+  return response.data.items
+}
+
+export async function startEncounter(registrationId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/registrations/${registrationId}/start`)
+  return response.data.item
+}
+
+export async function completeEncounter(encounterId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/complete`)
+  return response.data.item
+}
+
+export async function fetchPaymentOrders() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/cashier/payment-orders')
+  return response.data.items
+}
+
+export async function payOrder(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/pay`)
+  return response.data.item
+}
+
+export async function fetchPharmacyPrescriptions() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/pharmacy/prescriptions')
+  return response.data.items
+}
+
+export async function reviewPrescription(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/review`)
+  return response.data.item
+}
+
+export async function dispensePrescription(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/dispense`)
+  return response.data.item
 }
