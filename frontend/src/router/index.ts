@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import AdminResourcePage from '../pages/AdminResourcePage.vue'
 import CashierWorkbenchPage from '../pages/CashierWorkbenchPage.vue'
+import ClinicalTemplatesPage from '../pages/ClinicalTemplatesPage.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
 import DoctorWorkbenchPage from '../pages/DoctorWorkbenchPage.vue'
 import DrugStockMovementsPage from '../pages/DrugStockMovementsPage.vue'
@@ -158,6 +159,7 @@ export const routes: RouteRecordRaw[] = [
         { key: 'diagnoses', label: '诊断数' },
       ]),
       { path: 'doctor', component: DoctorWorkbenchPage },
+      { path: 'clinical-templates', component: ClinicalTemplatesPage },
       { path: 'cashier', component: CashierWorkbenchPage },
       { path: 'payment-history', component: PaymentHistoryPage },
       adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [

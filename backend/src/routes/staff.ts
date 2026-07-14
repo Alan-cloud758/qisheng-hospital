@@ -4,8 +4,15 @@ import { EncounterStatus, PrescriptionStatus, RegistrationStatus } from '../gene
 import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
 import {
+  applyRecordTemplate,
+  createPrescriptionFromTemplate,
+  rejectPrescription,
+  resubmitPrescription,
+  reviewPrescription as reviewPrescriptionWithQuality,
+  validatePrescriptionDraft,
+} from '../services/clinical-quality'
+import {
   assertCanCompleteEncounter,
-  assertCanReviewPrescription,
   assertCanStartEncounter,
 } from '../services/outpatient-state'
 import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
@@ -72,6 +79,28 @@ const damageStockSchema = z.object({
   reason: z.string().min(1),
 })
 
+const templateActionSchema = z.object({
+  templateId: z.string().min(1),
+})
+
+const rejectPrescriptionSchema = z.object({
+  reason: z.string().min(1),
+})
+
+const resubmitPrescriptionSchema = z.object({
+  note: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        drugId: z.string().min(1),
+        quantity: z.coerce.number().int().positive(),
+        dosage: z.string().min(1),
+        usage: z.string().min(1),
+      }),
+    )
+    .optional(),
+})
+
 function routeId(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : (value ?? '')
 }
@@ -108,7 +137,14 @@ staffRouter.get('/doctor/queue', requireRole('DOCTOR', 'ADMIN'), async (req, res
         doctor: { include: { user: true } },
         visitMember: true,
         slot: true,
-        encounter: { include: { medicalRecord: true, diagnoses: true, medicalOrders: true, prescriptions: true } },
+        encounter: {
+          include: {
+            medicalRecord: true,
+            diagnoses: true,
+            medicalOrders: true,
+            prescriptions: { include: { items: { include: { drug: true } }, reviewLogs: { orderBy: { createdAt: 'desc' } } } },
+          },
+        },
       },
       orderBy: [{ checkedInAt: 'asc' }, { createdAt: 'asc' }],
       take: 100,
@@ -120,8 +156,47 @@ staffRouter.get('/doctor/queue', requireRole('DOCTOR', 'ADMIN'), async (req, res
   }
 })
 
+staffRouter.get('/doctor/clinical-templates', requireRole('DOCTOR', 'ADMIN'), async (_req, res, next) => {
+  try {
+    const [recordTemplates, diagnoses, orders, prescriptionTemplates, drugs] = await Promise.all([
+      prisma.medicalRecordTemplate.findMany({ where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 200 }),
+      prisma.commonDiagnosis.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }], take: 300 }),
+      prisma.commonMedicalOrder.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }], take: 300 }),
+      prisma.prescriptionTemplate.findMany({ where: { isActive: true }, include: { items: { include: { drug: true } } }, orderBy: { createdAt: 'desc' }, take: 200 }),
+      prisma.drugCatalog.findMany({ where: { isActive: true }, orderBy: { code: 'asc' }, take: 500 }),
+    ])
+
+    res.json({ recordTemplates, diagnoses, orders, prescriptionTemplates, drugs })
+  } catch (error) {
+    next(error)
+  }
+})
+
 async function findDoctorProfile(userId: string) {
   return prisma.doctorProfile.findUnique({ where: { userId } })
+}
+
+async function requireDoctorProfileForRequest(req: Parameters<Parameters<typeof staffRouter.get>[1]>[0]) {
+  if (req.user!.roles.includes('ADMIN')) {
+    return null
+  }
+
+  const doctor = await findDoctorProfile(req.user!.id)
+  if (!doctor) {
+    throw new Error('医生档案不存在')
+  }
+  return doctor
+}
+
+async function findEncounterForDoctor(encounterId: string, doctorId?: string) {
+  const encounter = await prisma.encounter.findUnique({ where: { id: encounterId } })
+  if (!encounter) {
+    throw new Error('接诊记录不存在')
+  }
+  if (doctorId && encounter.doctorId !== doctorId) {
+    throw new Error('不能操作其他医生的接诊记录')
+  }
+  return encounter
 }
 
 async function startRegistrationEncounter(registrationId: string, currentUserId: string, isAdmin: boolean) {
@@ -193,6 +268,8 @@ staffRouter.put('/doctor/encounters/:id/record', requireRole('DOCTOR', 'ADMIN'),
   try {
     const input = recordSchema.parse(req.body)
     const encounterId = routeId(req.params.id)
+    const doctor = await requireDoctorProfileForRequest(req)
+    await findEncounterForDoctor(encounterId, doctor?.id)
     const item = await prisma.medicalRecord.upsert({
       where: { encounterId },
       create: { encounterId, summary: input.summary, advice: input.advice },
@@ -207,6 +284,8 @@ staffRouter.put('/doctor/encounters/:id/record', requireRole('DOCTOR', 'ADMIN'),
 staffRouter.post('/doctor/encounters/:id/diagnoses', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
   try {
     const input = diagnosisSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
     const item = await prisma.diagnosis.create({ data: { encounterId: routeId(req.params.id), ...input } })
     res.status(201).json({ item })
   } catch (error) {
@@ -217,6 +296,8 @@ staffRouter.post('/doctor/encounters/:id/diagnoses', requireRole('DOCTOR', 'ADMI
 staffRouter.post('/doctor/encounters/:id/orders', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
   try {
     const input = orderSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
     const item = await prisma.medicalOrder.create({ data: { encounterId: routeId(req.params.id), type: input.type, content: input.content } })
     res.status(201).json({ item })
   } catch (error) {
@@ -227,13 +308,9 @@ staffRouter.post('/doctor/encounters/:id/orders', requireRole('DOCTOR', 'ADMIN')
 staffRouter.post('/doctor/encounters/:id/prescriptions', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
   try {
     const input = prescriptionSchema.parse(req.body)
-    const encounter = await prisma.encounter.findUnique({ where: { id: routeId(req.params.id) } })
-    const doctor = req.user!.roles.includes('ADMIN') ? null : await findDoctorProfile(req.user!.id)
-
-    if (!encounter) {
-      res.status(404).json({ message: '接诊记录不存在' })
-      return
-    }
+    validatePrescriptionDraft(input.items)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const encounter = await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
 
     const doctorId = doctor?.id ?? encounter.doctorId
     const item = await prisma.prescription.create({
@@ -260,13 +337,57 @@ staffRouter.post('/doctor/encounters/:id/prescriptions', requireRole('DOCTOR', '
   }
 })
 
-staffRouter.post('/doctor/encounters/:id/complete', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+staffRouter.post('/doctor/encounters/:id/apply-record-template', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
   try {
-    const encounter = await prisma.encounter.findUnique({ where: { id: routeId(req.params.id) } })
-    if (!encounter) {
-      res.status(404).json({ message: '接诊记录不存在' })
+    const input = templateActionSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
+    const item = await applyRecordTemplate(routeId(req.params.id), input.templateId)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
       return
     }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/encounters/:id/prescriptions/from-template', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = templateActionSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const encounter = await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
+    const item = await createPrescriptionFromTemplate(encounter.id, input.templateId, doctor?.id ?? encounter.doctorId)
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/prescriptions/:id/resubmit', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = resubmitPrescriptionSchema.parse(req.body ?? {})
+    const doctor = await requireDoctorProfileForRequest(req)
+    const item = await resubmitPrescription(routeId(req.params.id), input, doctor?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/encounters/:id/complete', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const encounter = await findEncounterForDoctor(routeId(req.params.id), doctor?.id)
     assertCanCompleteEncounter(encounter.status)
 
     const item = await prisma.$transaction(async (tx) => {
@@ -366,6 +487,7 @@ staffRouter.get('/pharmacy/prescriptions', requireRole('PHARMACY', 'ADMIN'), asy
         doctor: { include: { user: true, department: true } },
         encounter: { include: { registration: { include: { visitMember: true } } } },
         items: { include: { drug: { include: { stockBatches: { where: { isActive: true, quantity: { gt: 0 } }, orderBy: { expiresAt: 'asc' } } } } } },
+        reviewLogs: { include: { reviewer: { select: { id: true, username: true, displayName: true } } }, orderBy: { createdAt: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -379,17 +501,21 @@ staffRouter.get('/pharmacy/prescriptions', requireRole('PHARMACY', 'ADMIN'), asy
 
 staffRouter.post('/pharmacy/prescriptions/:id/review', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
   try {
-    const prescription = await prisma.prescription.findUnique({ where: { id: routeId(req.params.id) } })
-    if (!prescription) {
-      res.status(404).json({ message: '处方不存在' })
+    const item = await reviewPrescriptionWithQuality(routeId(req.params.id), req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
       return
     }
-    assertCanReviewPrescription(prescription.status)
-    const item = await prisma.prescription.update({
-      where: { id: prescription.id },
-      data: { status: PrescriptionStatus.REVIEWED },
-      include: { items: { include: { drug: { include: { stockBatches: { where: { isActive: true, quantity: { gt: 0 } }, orderBy: { expiresAt: 'asc' } } } } } } },
-    })
+    next(error)
+  }
+})
+
+staffRouter.post('/pharmacy/prescriptions/:id/reject', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = rejectPrescriptionSchema.parse(req.body)
+    const item = await rejectPrescription(routeId(req.params.id), input.reason, req.user?.id)
     res.json({ item })
   } catch (error) {
     if (error instanceof Error) {

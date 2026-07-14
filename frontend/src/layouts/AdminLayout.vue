@@ -39,6 +39,7 @@ const navItems = [
   { path: '/schedules', label: '排班管理' },
   { path: '/registrations', label: '预约签到' },
   { path: '/doctor', label: '医生工作台' },
+  { path: '/clinical-templates', label: '临床模板' },
   { path: '/cashier', label: '收费工作台' },
   { path: '/pharmacy', label: '药房工作台' },
   { path: '/drugs', label: '药品目录' },

@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
 import type { AdminDelegate, AdminResourceConfig } from '../services/admin-crud'
 import { hashAccountPassword, registerAdminResourceRoutes } from '../services/admin-crud'
+import { validatePrescriptionDraft } from '../services/clinical-quality'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
 import { listStockAlerts } from '../services/pharmacy-inventory'
 import { generateSchedulesFromTemplate, markNoShow, suspendSchedule } from '../services/scheduling'
@@ -150,6 +151,212 @@ const scheduleTemplateSchema = z.object({
       }),
     )
     .default([]),
+})
+
+const clinicalTemplateSchema = z.object({
+  name: z.string().min(1),
+  summary: z.string().min(1),
+  advice: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+})
+
+const commonDiagnosisSchema = z.object({
+  code: z.string().optional().nullable(),
+  name: z.string().min(1),
+  note: z.string().optional().nullable(),
+  sortOrder: z.coerce.number().int().optional(),
+  isActive: z.boolean().optional(),
+})
+
+const commonOrderSchema = z.object({
+  type: z.string().min(1),
+  content: z.string().min(1),
+  sortOrder: z.coerce.number().int().optional(),
+  isActive: z.boolean().optional(),
+})
+
+const prescriptionTemplateSchema = z.object({
+  name: z.string().min(1),
+  note: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  items: z
+    .array(
+      z.object({
+        drugId: z.string().min(1),
+        quantity: z.coerce.number().int().positive(),
+        dosage: z.string().min(1),
+        usage: z.string().min(1),
+      }),
+    )
+    .default([]),
+})
+
+adminRouter.get('/medical-record-templates', async (_req, res, next) => {
+  try {
+    const items = await prisma.medicalRecordTemplate.findMany({ orderBy: { createdAt: 'desc' }, take: 200 })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/medical-record-templates', async (req, res, next) => {
+  try {
+    const input = clinicalTemplateSchema.parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.medicalRecordTemplate.create({ data: { ...input, advice: input.advice ?? undefined } })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.CREATE, resource: 'medical-record-template', resourceId: created.id } })
+      return created
+    })
+    res.status(201).json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.put('/medical-record-templates/:id', async (req, res, next) => {
+  try {
+    const input = clinicalTemplateSchema.partial().parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.medicalRecordTemplate.update({ where: { id: req.params.id }, data: { ...input, advice: input.advice ?? undefined } })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.UPDATE, resource: 'medical-record-template', resourceId: updated.id } })
+      return updated
+    })
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/common-diagnoses', async (_req, res, next) => {
+  try {
+    const items = await prisma.commonDiagnosis.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }], take: 300 })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/common-diagnoses', async (req, res, next) => {
+  try {
+    const input = commonDiagnosisSchema.parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.commonDiagnosis.create({ data: { ...input, code: input.code ?? undefined, note: input.note ?? undefined } })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.CREATE, resource: 'common-diagnosis', resourceId: created.id } })
+      return created
+    })
+    res.status(201).json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.put('/common-diagnoses/:id', async (req, res, next) => {
+  try {
+    const input = commonDiagnosisSchema.partial().parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.commonDiagnosis.update({ where: { id: req.params.id }, data: { ...input, code: input.code ?? undefined, note: input.note ?? undefined } })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.UPDATE, resource: 'common-diagnosis', resourceId: updated.id } })
+      return updated
+    })
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/common-orders', async (_req, res, next) => {
+  try {
+    const items = await prisma.commonMedicalOrder.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }], take: 300 })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/common-orders', async (req, res, next) => {
+  try {
+    const input = commonOrderSchema.parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.commonMedicalOrder.create({ data: input })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.CREATE, resource: 'common-order', resourceId: created.id } })
+      return created
+    })
+    res.status(201).json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.put('/common-orders/:id', async (req, res, next) => {
+  try {
+    const input = commonOrderSchema.partial().parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.commonMedicalOrder.update({ where: { id: req.params.id }, data: input })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.UPDATE, resource: 'common-order', resourceId: updated.id } })
+      return updated
+    })
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/prescription-templates', async (_req, res, next) => {
+  try {
+    const items = await prisma.prescriptionTemplate.findMany({
+      include: { items: { include: { drug: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.post('/prescription-templates', async (req, res, next) => {
+  try {
+    const input = prescriptionTemplateSchema.parse(req.body)
+    validatePrescriptionDraft(input.items)
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.prescriptionTemplate.create({
+        data: { name: input.name, note: input.note ?? undefined, isActive: input.isActive ?? true, items: { create: input.items } },
+        include: { items: { include: { drug: true } } },
+      })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.CREATE, resource: 'prescription-template', resourceId: created.id } })
+      return created
+    })
+    res.status(201).json({ item })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.put('/prescription-templates/:id', async (req, res, next) => {
+  try {
+    const input = prescriptionTemplateSchema.partial().parse(req.body)
+    if (input.items) {
+      validatePrescriptionDraft(input.items)
+    }
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.prescriptionTemplate.update({
+        where: { id: req.params.id },
+        data: {
+          name: input.name,
+          note: input.note ?? undefined,
+          isActive: input.isActive,
+          ...(input.items ? { items: { deleteMany: {}, create: input.items } } : {}),
+        },
+        include: { items: { include: { drug: true } } },
+      })
+      await tx.auditLog.create({ data: { userId: req.user?.id, action: AuditAction.UPDATE, resource: 'prescription-template', resourceId: updated.id } })
+      return updated
+    })
+    res.json({ item })
+  } catch (error) {
+    next(error)
+  }
 })
 
 adminRouter.get('/schedule-templates', async (req, res, next) => {

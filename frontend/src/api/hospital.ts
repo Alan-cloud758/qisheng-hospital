@@ -116,6 +116,42 @@ export async function completeEncounter(encounterId: string) {
   return response.data.item
 }
 
+export async function fetchDoctorClinicalTemplates() {
+  const response = await apiClient.get<{
+    recordTemplates: unknown[]
+    diagnoses: unknown[]
+    orders: unknown[]
+    prescriptionTemplates: unknown[]
+    drugs: unknown[]
+  }>('/staff/doctor/clinical-templates')
+  return response.data
+}
+
+export async function applyEncounterRecordTemplate(encounterId: string, templateId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/apply-record-template`, { templateId })
+  return response.data.item
+}
+
+export async function createEncounterDiagnosis(encounterId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/diagnoses`, data)
+  return response.data.item
+}
+
+export async function createEncounterOrder(encounterId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/orders`, data)
+  return response.data.item
+}
+
+export async function createPrescriptionFromTemplate(encounterId: string, templateId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/prescriptions/from-template`, { templateId })
+  return response.data.item
+}
+
+export async function resubmitPrescription(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/prescriptions/${id}/resubmit`, {})
+  return response.data.item
+}
+
 export async function fetchPaymentOrders() {
   const response = await apiClient.get<{ items: unknown[] }>('/staff/cashier/payment-orders')
   return response.data.items
@@ -153,6 +189,11 @@ export async function fetchPharmacyPrescriptions() {
 
 export async function reviewPrescription(id: string) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/review`)
+  return response.data.item
+}
+
+export async function rejectPrescription(id: string, reason: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/reject`, { reason })
   return response.data.item
 }
 
@@ -194,4 +235,19 @@ export async function fetchDrugStockMovements() {
 export async function fetchDrugStockAlerts() {
   const response = await apiClient.get<{ items: unknown[] }>('/staff/pharmacy/stock-alerts')
   return response.data.items
+}
+
+export async function fetchClinicalTemplateResource(resource: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/${resource}`)
+  return response.data.items
+}
+
+export async function createClinicalTemplateResource(resource: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/${resource}`, data)
+  return response.data.item
+}
+
+export async function updateClinicalTemplateResource(resource: string, id: string, data: Record<string, unknown>) {
+  const response = await apiClient.put<{ item: unknown }>(`/admin/${resource}/${id}`, data)
+  return response.data.item
 }

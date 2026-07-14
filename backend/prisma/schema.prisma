@@ -51,6 +51,7 @@ enum RefundStatus {
 enum PrescriptionStatus {
   DRAFT
   SUBMITTED
+  REJECTED
   REVIEWED
   DISPENSED
   CANCELLED
@@ -101,6 +102,7 @@ model User {
   lockedSlots    AppointmentSlot[] @relation("SlotLockOwner")
   requestedRefunds RefundOrder[]
   drugStockMovements DrugStockMovement[]
+  prescriptionReviewLogs PrescriptionReviewLog[]
 }
 
 model Role {
@@ -544,6 +546,63 @@ model DrugCatalog {
   stockBatches DrugStockBatch[]
   stockMovements DrugStockMovement[]
   stockAlerts DrugStockAlert[]
+  prescriptionTemplateItems PrescriptionTemplateItem[]
+}
+
+model MedicalRecordTemplate {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(120)
+  summary   String   @db.VarChar(1000)
+  advice    String?  @db.VarChar(1000)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CommonDiagnosis {
+  id        String   @id @default(cuid())
+  code      String?  @db.VarChar(64)
+  name      String   @db.VarChar(120)
+  note      String?  @db.VarChar(500)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CommonMedicalOrder {
+  id        String   @id @default(cuid())
+  type      String   @db.VarChar(80)
+  content   String   @db.VarChar(500)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PrescriptionTemplate {
+  id        String                     @id @default(cuid())
+  name      String                     @db.VarChar(120)
+  note      String?                    @db.VarChar(500)
+  isActive  Boolean                    @default(true)
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+  items     PrescriptionTemplateItem[]
+}
+
+model PrescriptionTemplateItem {
+  id         String               @id @default(cuid())
+  templateId String
+  drugId     String
+  quantity   Int
+  dosage     String               @db.VarChar(120)
+  usage      String               @db.VarChar(120)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  template   PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  drug       DrugCatalog          @relation(fields: [drugId], references: [id])
+
+  @@unique([templateId, drugId])
 }
 
 model DrugStockBatch {
@@ -610,12 +669,16 @@ model Prescription {
   doctorId    String
   status      PrescriptionStatus @default(DRAFT)
   note        String?            @db.VarChar(500)
+  rejectedReason String?         @db.VarChar(500)
+  rejectedAt  DateTime?
+  resubmittedAt DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   encounter   Encounter?         @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   doctor      DoctorProfile      @relation(fields: [doctorId], references: [id])
   items       PrescriptionItem[]
   stockMovements DrugStockMovement[]
+  reviewLogs  PrescriptionReviewLog[]
 }
 
 model PrescriptionItem {
@@ -629,6 +692,21 @@ model PrescriptionItem {
   updatedAt      DateTime     @updatedAt
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
   drug           DrugCatalog  @relation(fields: [drugId], references: [id])
+}
+
+model PrescriptionReviewLog {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  action         String       @db.VarChar(40)
+  fromStatus     PrescriptionStatus?
+  toStatus       PrescriptionStatus
+  reason         String?      @db.VarChar(500)
+  reviewerId     String?
+  createdAt      DateTime     @default(now())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  reviewer       User?        @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([prescriptionId, createdAt])
 }
 
 model Announcement {

@@ -24,6 +24,7 @@
         <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button size="small" :disabled="row.status !== 'CHECKED_IN'" @click="start(row.id)">开始接诊</el-button>
+            <el-button size="small" :disabled="!row.encounter || row.encounter.status !== 'OPEN'" @click="openTemplates(row)">模板</el-button>
             <el-button
               size="small"
               type="success"
@@ -36,12 +37,95 @@
         </el-table-column>
       </el-table>
     </section>
+
+    <el-drawer v-model="templateVisible" title="临床模板" size="560px">
+      <section v-if="selectedEncounter" class="template-stack">
+        <div>
+          <h3>病历模板</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.recordTemplateId" filterable placeholder="选择病历模板">
+              <el-option v-for="item in templateData.recordTemplates" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <el-button type="primary" @click="applyRecord">套用</el-button>
+          </div>
+        </div>
+
+        <div>
+          <h3>常用诊断</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.diagnosisId" filterable placeholder="选择诊断">
+              <el-option v-for="item in templateData.diagnoses" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <el-button @click="addDiagnosis">添加</el-button>
+          </div>
+        </div>
+
+        <div>
+          <h3>常用医嘱</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.orderId" filterable placeholder="选择医嘱">
+              <el-option v-for="item in templateData.orders" :key="item.id" :label="item.content" :value="item.id" />
+            </el-select>
+            <el-button @click="addOrder">添加</el-button>
+          </div>
+        </div>
+
+        <div>
+          <h3>处方模板</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.prescriptionTemplateId" filterable placeholder="选择处方模板">
+              <el-option v-for="item in templateData.prescriptionTemplates" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <el-button type="primary" @click="createPrescription">生成处方</el-button>
+          </div>
+        </div>
+
+        <div>
+          <h3>处方状态</h3>
+          <el-table :data="selectedEncounter.prescriptions || []" border>
+            <el-table-column label="处方" prop="id" min-width="160" />
+            <el-table-column label="状态" prop="status" width="110" />
+            <el-table-column label="驳回原因" prop="rejectedReason" min-width="160" />
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button size="small" :disabled="row.status !== 'REJECTED'" @click="resubmit(row.id)">重提交</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </section>
+    </el-drawer>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { completeEncounter, fetchDoctorQueue, startEncounter } from '../api/hospital'
+import { onMounted, reactive, ref } from 'vue'
+import {
+  applyEncounterRecordTemplate,
+  completeEncounter,
+  createEncounterDiagnosis,
+  createEncounterOrder,
+  createPrescriptionFromTemplate,
+  fetchDoctorClinicalTemplates,
+  fetchDoctorQueue,
+  resubmitPrescription,
+  startEncounter,
+} from '../api/hospital'
+
+interface TemplateRow {
+  id: string
+  name?: string
+  code?: string
+  note?: string
+  type?: string
+  content?: string
+}
+
+interface PrescriptionRow {
+  id: string
+  status: string
+  rejectedReason?: string
+}
 
 interface DoctorQueueRow {
   id: string
@@ -49,16 +133,39 @@ interface DoctorQueueRow {
   visitMember?: { name?: string }
   department?: { name?: string }
   slot?: { startTime?: string }
-  encounter?: { id: string; status: string }
+  encounter?: { id: string; status: string; prescriptions?: PrescriptionRow[] }
 }
 
 const loading = ref(false)
 const rows = ref<DoctorQueueRow[]>([])
+const templateVisible = ref(false)
+const selectedEncounter = ref<DoctorQueueRow['encounter'] | null>(null)
+const selectedEncounterId = ref('')
+const templateData = reactive({
+  recordTemplates: [] as TemplateRow[],
+  diagnoses: [] as TemplateRow[],
+  orders: [] as TemplateRow[],
+  prescriptionTemplates: [] as TemplateRow[],
+})
+const templateForm = reactive({
+  recordTemplateId: '',
+  diagnosisId: '',
+  orderId: '',
+  prescriptionTemplateId: '',
+})
 
 async function load() {
   loading.value = true
   try {
-    rows.value = (await fetchDoctorQueue()) as DoctorQueueRow[]
+    const [queue, templates] = await Promise.all([fetchDoctorQueue(), fetchDoctorClinicalTemplates()])
+    rows.value = queue as DoctorQueueRow[]
+    templateData.recordTemplates = templates.recordTemplates as TemplateRow[]
+    templateData.diagnoses = templates.diagnoses as TemplateRow[]
+    templateData.orders = templates.orders as TemplateRow[]
+    templateData.prescriptionTemplates = templates.prescriptionTemplates as TemplateRow[]
+    if (selectedEncounterId.value) {
+      selectedEncounter.value = rows.value.find((row) => row.encounter?.id === selectedEncounterId.value)?.encounter ?? null
+    }
   } finally {
     loading.value = false
   }
@@ -74,7 +181,71 @@ async function complete(id: string) {
   await load()
 }
 
+function openTemplates(row: DoctorQueueRow) {
+  selectedEncounter.value = row.encounter ?? null
+  selectedEncounterId.value = row.encounter?.id ?? ''
+  templateVisible.value = true
+}
+
+function selectedDiagnosis() {
+  return templateData.diagnoses.find((item) => item.id === templateForm.diagnosisId)
+}
+
+function selectedOrder() {
+  return templateData.orders.find((item) => item.id === templateForm.orderId)
+}
+
+async function applyRecord() {
+  if (!selectedEncounter.value || !templateForm.recordTemplateId) return
+  await applyEncounterRecordTemplate(selectedEncounter.value.id, templateForm.recordTemplateId)
+  await load()
+}
+
+async function addDiagnosis() {
+  if (!selectedEncounter.value) return
+  const item = selectedDiagnosis()
+  if (!item) return
+  await createEncounterDiagnosis(selectedEncounter.value.id, { code: item.code, name: item.name, note: item.note })
+  await load()
+}
+
+async function addOrder() {
+  if (!selectedEncounter.value) return
+  const item = selectedOrder()
+  if (!item) return
+  await createEncounterOrder(selectedEncounter.value.id, { type: item.type, content: item.content })
+  await load()
+}
+
+async function createPrescription() {
+  if (!selectedEncounter.value || !templateForm.prescriptionTemplateId) return
+  await createPrescriptionFromTemplate(selectedEncounter.value.id, templateForm.prescriptionTemplateId)
+  await load()
+}
+
+async function resubmit(id: string) {
+  await resubmitPrescription(id)
+  await load()
+}
+
 onMounted(() => {
   void load()
 })
 </script>
+
+<style scoped>
+.template-stack {
+  display: grid;
+  gap: 22px;
+}
+
+.template-stack h3 {
+  margin: 0 0 10px;
+}
+
+.template-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+</style>

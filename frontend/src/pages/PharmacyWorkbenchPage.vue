@@ -35,11 +35,14 @@
           </template>
         </el-table-column>
         <el-table-column label="状态" prop="status" width="120" />
-        <el-table-column label="操作" width="260">
+        <el-table-column label="驳回原因" prop="rejectedReason" min-width="160" />
+        <el-table-column label="操作" width="340">
           <template #default="{ row }">
             <el-button size="small" :disabled="row.status !== 'SUBMITTED'" @click="review(row.id)">审核</el-button>
+            <el-button size="small" type="danger" :disabled="row.status !== 'SUBMITTED'" @click="openReject(row)">驳回</el-button>
             <el-button size="small" type="success" :disabled="row.status !== 'REVIEWED'" @click="openDispense(row)">发药</el-button>
             <el-button size="small" type="warning" :disabled="row.status !== 'DISPENSED'" @click="returnStock(row.id)">退回</el-button>
+            <el-button size="small" @click="openHistory(row)">日志</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -65,12 +68,45 @@
         <el-button v-if="!dispenseConfirmed" type="primary" :disabled="Boolean(dispenseWarning)" @click="confirmDispense">确认发药</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="rejectVisible" title="驳回处方" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="处方">{{ selectedPrescription?.id || '-' }}</el-form-item>
+        <el-form-item label="原因">
+          <el-input v-model="rejectReason" type="textarea" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rejectVisible = false">取消</el-button>
+        <el-button type="danger" @click="submitReject">确认驳回</el-button>
+      </template>
+    </el-dialog>
+
+    <el-drawer v-model="historyVisible" title="审核日志" size="520px">
+      <el-table :data="selectedPrescription?.reviewLogs || []" border>
+        <el-table-column label="动作" prop="action" width="100" />
+        <el-table-column label="状态" min-width="150">
+          <template #default="{ row }">{{ row.fromStatus || '-' }} -> {{ row.toStatus }}</template>
+        </el-table-column>
+        <el-table-column label="原因" prop="reason" min-width="160" />
+        <el-table-column label="操作人" min-width="120">
+          <template #default="{ row }">{{ row.reviewer?.displayName || row.reviewer?.username || '-' }}</template>
+        </el-table-column>
+      </el-table>
+    </el-drawer>
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { dispensePrescription, fetchDrugStockAlerts, fetchPharmacyPrescriptions, returnPrescription, reviewPrescription } from '../api/hospital'
+import {
+  dispensePrescription,
+  fetchDrugStockAlerts,
+  fetchPharmacyPrescriptions,
+  rejectPrescription,
+  returnPrescription,
+  reviewPrescription,
+} from '../api/hospital'
 
 interface StockBatchRow {
   id: string
@@ -91,8 +127,10 @@ interface PrescriptionItemRow {
 interface PrescriptionRow {
   id: string
   status: string
+  rejectedReason?: string
   doctor?: { user?: { displayName?: string } }
   items?: PrescriptionItemRow[]
+  reviewLogs?: ReviewLogRow[]
 }
 
 interface StockAlertRow {
@@ -109,12 +147,23 @@ interface PlannedBatchRow {
   expiresAt: string
 }
 
+interface ReviewLogRow {
+  action: string
+  fromStatus?: string
+  toStatus: string
+  reason?: string
+  reviewer?: { username?: string; displayName?: string }
+}
+
 const loading = ref(false)
 const rows = ref<PrescriptionRow[]>([])
 const alerts = ref<StockAlertRow[]>([])
 const dispenseVisible = ref(false)
+const rejectVisible = ref(false)
+const historyVisible = ref(false)
 const dispenseWarning = ref('')
 const dispenseConfirmed = ref(false)
+const rejectReason = ref('')
 const selectedPrescription = ref<PrescriptionRow | null>(null)
 const plannedBatches = ref<PlannedBatchRow[]>([])
 
@@ -132,6 +181,24 @@ async function load() {
 async function review(id: string) {
   await reviewPrescription(id)
   await load()
+}
+
+function openReject(row: PrescriptionRow) {
+  selectedPrescription.value = row
+  rejectReason.value = row.rejectedReason || '处方需修改'
+  rejectVisible.value = true
+}
+
+async function submitReject() {
+  if (!selectedPrescription.value) return
+  await rejectPrescription(selectedPrescription.value.id, rejectReason.value)
+  rejectVisible.value = false
+  await load()
+}
+
+function openHistory(row: PrescriptionRow) {
+  selectedPrescription.value = row
+  historyVisible.value = true
 }
 
 function planBatches(row: PrescriptionRow) {
