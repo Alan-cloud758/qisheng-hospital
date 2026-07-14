@@ -11,6 +11,7 @@ import {
   reviewPrescription as reviewPrescriptionWithQuality,
   validatePrescriptionDraft,
 } from '../services/clinical-quality'
+import { callNextPatient, restoreQueueTicket, skipQueueTicket } from '../services/queue'
 import {
   assertCanCompleteEncounter,
   assertCanStartEncounter,
@@ -137,6 +138,7 @@ staffRouter.get('/doctor/queue', requireRole('DOCTOR', 'ADMIN'), async (req, res
         doctor: { include: { user: true } },
         visitMember: true,
         slot: true,
+        queueTicket: true,
         encounter: {
           include: {
             medicalRecord: true,
@@ -152,6 +154,68 @@ staffRouter.get('/doctor/queue', requireRole('DOCTOR', 'ADMIN'), async (req, res
 
     res.json({ items: registrations })
   } catch (error) {
+    next(error)
+  }
+})
+
+staffRouter.get('/doctor/queue-tickets', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const items = await prisma.queueTicket.findMany({
+      where: doctor ? { doctorId: doctor.id } : undefined,
+      include: { registration: { include: { visitMember: true } }, doctor: { include: { user: true } }, department: true },
+      orderBy: [{ status: 'asc' }, { queueNo: 'asc' }],
+      take: 100,
+    })
+    res.json({ items })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/queue/next', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const doctorId = doctor?.id ?? z.object({ doctorId: z.string().min(1) }).parse(req.body ?? {}).doctorId
+    const item = await callNextPatient(doctorId)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/queue/:id/skip', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const item = await skipQueueTicket(routeId(req.params.id), doctor?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/queue/:id/restore', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const item = await restoreQueueTicket(routeId(req.params.id), doctor?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
     next(error)
   }
 })
@@ -220,6 +284,17 @@ async function startRegistrationEncounter(registrationId: string, currentUserId:
       where: { id: registration.id },
       data: { status: RegistrationStatus.IN_VISIT },
     })
+    const ticket = await tx.queueTicket.findUnique({ where: { registrationId: registration.id } })
+    if (ticket && ticket.status !== 'COMPLETED') {
+      await tx.queueTicket.update({
+        where: { id: ticket.id },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      })
+      await tx.doctorQueueState.updateMany({
+        where: { doctorId: ticket.doctorId, currentTicketId: ticket.id },
+        data: { currentTicketId: null },
+      })
+    }
 
     return tx.encounter.upsert({
       where: { registrationId: registration.id },
@@ -399,6 +474,17 @@ staffRouter.post('/doctor/encounters/:id/complete', requireRole('DOCTOR', 'ADMIN
         where: { id: encounter.registrationId },
         data: { status: RegistrationStatus.COMPLETED },
       })
+      const ticket = await tx.queueTicket.findUnique({ where: { registrationId: encounter.registrationId } })
+      if (ticket && ticket.status !== 'COMPLETED') {
+        await tx.queueTicket.update({
+          where: { id: ticket.id },
+          data: { status: 'COMPLETED', completedAt: new Date() },
+        })
+        await tx.doctorQueueState.updateMany({
+          where: { doctorId: ticket.doctorId, currentTicketId: ticket.id },
+          data: { currentTicketId: null },
+        })
+      }
       return updated
     })
 

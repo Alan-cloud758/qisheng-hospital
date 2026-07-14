@@ -63,6 +63,21 @@ enum EncounterStatus {
   CANCELLED
 }
 
+enum PatientNotificationType {
+  APPOINTMENT
+  QUEUE
+  FOLLOW_UP
+  SYSTEM
+}
+
+enum QueueTicketStatus {
+  WAITING
+  CALLED
+  SKIPPED
+  COMPLETED
+  CANCELLED
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -103,6 +118,8 @@ model User {
   requestedRefunds RefundOrder[]
   drugStockMovements DrugStockMovement[]
   prescriptionReviewLogs PrescriptionReviewLog[]
+  notifications PatientNotification[]
+  favoriteDoctors FavoriteDoctor[]
 }
 
 model Role {
@@ -190,6 +207,7 @@ model Department {
   schedules     DoctorSchedule[]
   scheduleTemplates ScheduleTemplate[]
   registrations Registration[]
+  queueTickets QueueTicket[]
 }
 
 model ClinicRoom {
@@ -228,6 +246,9 @@ model DoctorProfile {
   registrations  Registration[]
   encounters     Encounter[]
   prescriptions  Prescription[]
+  queueTickets   QueueTicket[]
+  queueState     DoctorQueueState?
+  favoritedBy    FavoriteDoctor[]
 }
 
 model PatientProfile {
@@ -375,6 +396,62 @@ model Registration {
   paymentOrder   PaymentOrder?      @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
   encounter      Encounter?
   changeLogs     RegistrationChangeLog[]
+  queueTicket    QueueTicket?
+}
+
+model PatientNotification {
+  id         String                  @id @default(cuid())
+  userId     String
+  type       PatientNotificationType @default(SYSTEM)
+  title      String                  @db.VarChar(160)
+  content    String                  @db.VarChar(1000)
+  sourceType String?                 @db.VarChar(80)
+  sourceId   String?                 @db.VarChar(120)
+  readAt     DateTime?
+  createdAt  DateTime                @default(now())
+  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model QueueTicket {
+  id             String            @id @default(cuid())
+  registrationId String            @unique
+  doctorId       String
+  departmentId   String
+  queueNo        Int
+  status         QueueTicketStatus @default(WAITING)
+  calledAt       DateTime?
+  skippedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  registration   Registration      @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  doctor         DoctorProfile     @relation(fields: [doctorId], references: [id])
+  department     Department        @relation(fields: [departmentId], references: [id])
+
+  @@unique([doctorId, queueNo])
+  @@index([doctorId, status, queueNo])
+}
+
+model DoctorQueueState {
+  id              String        @id @default(cuid())
+  doctorId        String        @unique
+  currentTicketId String?
+  avgMinutes      Int           @default(8)
+  updatedAt       DateTime      @updatedAt
+  doctor          DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model FavoriteDoctor {
+  id        String        @id @default(cuid())
+  userId    String
+  doctorId  String
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, doctorId])
 }
 
 model Encounter {

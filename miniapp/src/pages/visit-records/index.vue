@@ -4,6 +4,10 @@ import { usePatientStore } from '../../stores/patient'
 
 const store = usePatientStore()
 
+function followUp(id: string) {
+  void store.requestFollowUp(id)
+}
+
 onMounted(() => {
   void store.loadVisitRecords()
 })
@@ -20,6 +24,7 @@ onMounted(() => {
       <text class="name">{{ record.registration?.department?.name }} · {{ record.doctor?.user?.displayName }}</text>
       <text class="muted">{{ record.medicalRecord?.summary || '暂无病历摘要' }}</text>
       <text class="muted">诊断：{{ record.diagnoses?.map((item: any) => item.name).join('、') || '-' }}</text>
+      <button class="plain" @tap="followUp(record.id)">设置复诊提醒</button>
     </view>
   </view>
 </template>

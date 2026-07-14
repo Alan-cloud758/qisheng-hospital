@@ -10,6 +10,26 @@
     </div>
 
     <section class="panel">
+      <div class="queue-toolbar">
+        <strong>今日队列</strong>
+        <el-button type="primary" @click="callNext">叫下一位</el-button>
+      </div>
+      <el-table :data="queueTickets" border>
+        <el-table-column label="号码" prop="queueNo" width="80" />
+        <el-table-column label="患者" min-width="120">
+          <template #default="{ row }">{{ row.registration?.visitMember?.name || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" prop="status" width="110" />
+        <el-table-column label="操作" width="180">
+          <template #default="{ row }">
+            <el-button size="small" :disabled="row.status !== 'WAITING' && row.status !== 'CALLED'" @click="skip(row.id)">跳过</el-button>
+            <el-button size="small" :disabled="row.status !== 'SKIPPED'" @click="restore(row.id)">恢复</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
+
+    <section class="panel">
       <el-table v-loading="loading" :data="rows" border stripe>
         <el-table-column label="患者" min-width="120">
           <template #default="{ row }">{{ row.visitMember?.name || '-' }}</template>
@@ -102,13 +122,17 @@
 import { onMounted, reactive, ref } from 'vue'
 import {
   applyEncounterRecordTemplate,
+  callNextQueuePatient,
   completeEncounter,
   createEncounterDiagnosis,
   createEncounterOrder,
   createPrescriptionFromTemplate,
   fetchDoctorClinicalTemplates,
   fetchDoctorQueue,
+  fetchDoctorQueueTickets,
   resubmitPrescription,
+  restoreQueueTicket,
+  skipQueueTicket,
   startEncounter,
 } from '../api/hospital'
 
@@ -134,10 +158,19 @@ interface DoctorQueueRow {
   department?: { name?: string }
   slot?: { startTime?: string }
   encounter?: { id: string; status: string; prescriptions?: PrescriptionRow[] }
+  queueTicket?: { id: string; queueNo: number; status: string }
+}
+
+interface QueueTicketRow {
+  id: string
+  queueNo: number
+  status: string
+  registration?: { visitMember?: { name?: string } }
 }
 
 const loading = ref(false)
 const rows = ref<DoctorQueueRow[]>([])
+const queueTickets = ref<QueueTicketRow[]>([])
 const templateVisible = ref(false)
 const selectedEncounter = ref<DoctorQueueRow['encounter'] | null>(null)
 const selectedEncounterId = ref('')
@@ -157,8 +190,9 @@ const templateForm = reactive({
 async function load() {
   loading.value = true
   try {
-    const [queue, templates] = await Promise.all([fetchDoctorQueue(), fetchDoctorClinicalTemplates()])
+    const [queue, tickets, templates] = await Promise.all([fetchDoctorQueue(), fetchDoctorQueueTickets(), fetchDoctorClinicalTemplates()])
     rows.value = queue as DoctorQueueRow[]
+    queueTickets.value = tickets as QueueTicketRow[]
     templateData.recordTemplates = templates.recordTemplates as TemplateRow[]
     templateData.diagnoses = templates.diagnoses as TemplateRow[]
     templateData.orders = templates.orders as TemplateRow[]
@@ -178,6 +212,21 @@ async function start(id: string) {
 
 async function complete(id: string) {
   await completeEncounter(id)
+  await load()
+}
+
+async function callNext() {
+  await callNextQueuePatient()
+  await load()
+}
+
+async function skip(id: string) {
+  await skipQueueTicket(id)
+  await load()
+}
+
+async function restore(id: string) {
+  await restoreQueueTicket(id)
   await load()
 }
 
@@ -247,5 +296,12 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+}
+
+.queue-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 </style>

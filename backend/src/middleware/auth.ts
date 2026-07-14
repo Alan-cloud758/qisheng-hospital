@@ -10,10 +10,13 @@ export function createToken(user: AuthUser) {
   return token
 }
 
-export function auth(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization
+export function authUserFromHeader(header: string | undefined) {
   const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : ''
-  const user = tokenStore.get(token)
+  return tokenStore.get(token) ?? null
+}
+
+export function auth(req: Request, res: Response, next: NextFunction) {
+  const user = authUserFromHeader(req.headers.authorization)
 
   if (!user) {
     res.status(401).json({ message: '请先登录' })

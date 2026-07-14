@@ -8,6 +8,7 @@ import { hashAccountPassword, registerAdminResourceRoutes } from '../services/ad
 import { validatePrescriptionDraft } from '../services/clinical-quality'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
 import { listStockAlerts } from '../services/pharmacy-inventory'
+import { checkInRegistrationWithQueue } from '../services/queue'
 import { generateSchedulesFromTemplate, markNoShow, suspendSchedule } from '../services/scheduling'
 
 export const adminRouter = Router()
@@ -582,6 +583,7 @@ adminRouter.get('/registrations', async (_req, res, next) => {
         visitMember: true,
         slot: true,
         paymentOrder: true,
+        queueTicket: true,
         changeLogs: {
           where: { action: 'RESCHEDULE' },
           orderBy: { createdAt: 'desc' },
@@ -608,15 +610,17 @@ adminRouter.post('/registrations/:id/check-in', async (req, res, next) => {
 
     assertCanCheckInRegistration(registration.status)
 
-    const item = await prisma.registration.update({
+    await checkInRegistrationWithQueue(req.params.id)
+
+    const item = await prisma.registration.findUnique({
       where: { id: req.params.id },
-      data: { status: RegistrationStatus.CHECKED_IN, checkedInAt: new Date() },
       include: {
         department: true,
         doctor: { include: { user: true } },
         visitMember: true,
         slot: true,
         paymentOrder: true,
+        queueTicket: true,
       },
     })
 

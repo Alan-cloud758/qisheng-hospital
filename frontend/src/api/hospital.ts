@@ -106,6 +106,26 @@ export async function fetchDoctorQueue() {
   return response.data.items
 }
 
+export async function fetchDoctorQueueTickets() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/queue-tickets')
+  return response.data.items
+}
+
+export async function callNextQueuePatient() {
+  const response = await apiClient.post<{ item: unknown }>('/staff/doctor/queue/next', {})
+  return response.data.item
+}
+
+export async function skipQueueTicket(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/queue/${id}/skip`)
+  return response.data.item
+}
+
+export async function restoreQueueTicket(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/queue/${id}/restore`)
+  return response.data.item
+}
+
 export async function startEncounter(registrationId: string) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/registrations/${registrationId}/start`)
   return response.data.item

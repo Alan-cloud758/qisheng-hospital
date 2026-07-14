@@ -7,18 +7,26 @@ import {
   fetchDoctorSlots,
   fetchDoctors,
   fetchFees,
+  fetchNotifications,
+  fetchQueueTickets,
   fetchRegistrations,
   fetchVisitMembers,
   fetchVisitRecords,
+  favoriteDoctor,
   lockAppointmentSlot,
   loginPatient,
+  markNotificationRead,
+  requestFollowUp,
   rescheduleRegistration,
   setDefaultVisitMember,
+  unfavoriteDoctor,
   type Announcement,
   type DepartmentSummary,
   type DoctorScheduleSlot,
   type DoctorSummary,
   type FeeOrder,
+  type PatientNotification,
+  type QueueTicket,
   type Registration,
   type VisitMember,
 } from '../api/hospital'
@@ -33,6 +41,8 @@ export const usePatientStore = defineStore('patient', {
     registrations: [] as Registration[],
     visitRecords: [] as unknown[],
     fees: [] as FeeOrder[],
+    notifications: [] as PatientNotification[],
+    queueTickets: [] as QueueTicket[],
     selectedDoctorId: '',
     selectedSlot: null as DoctorScheduleSlot | null,
     loading: false,
@@ -117,6 +127,31 @@ export const usePatientStore = defineStore('patient', {
       const response = await fetchRegistrations()
       this.registrations = response.items
     },
+    async loadNotifications() {
+      await this.ensureLogin()
+      const response = await fetchNotifications()
+      this.notifications = response.items
+    },
+    async readNotification(id: string) {
+      await this.ensureLogin()
+      await markNotificationRead(id)
+      await this.loadNotifications()
+    },
+    async loadQueueTickets() {
+      await this.ensureLogin()
+      const response = await fetchQueueTickets()
+      this.queueTickets = response.items
+    },
+    async favoriteDoctor(id: string) {
+      await this.ensureLogin()
+      await favoriteDoctor(id)
+      this.doctors = this.doctors.map((doctor) => (doctor.id === id ? { ...doctor, isFavorite: true } : doctor))
+    },
+    async unfavoriteDoctor(id: string) {
+      await this.ensureLogin()
+      await unfavoriteDoctor(id)
+      this.doctors = this.doctors.map((doctor) => (doctor.id === id ? { ...doctor, isFavorite: false } : doctor))
+    },
     async cancelRegistration(id: string) {
       await this.ensureLogin()
       await cancelRegistration(id)
@@ -134,6 +169,11 @@ export const usePatientStore = defineStore('patient', {
       await this.ensureLogin()
       const response = await fetchVisitRecords()
       this.visitRecords = response.items
+    },
+    async requestFollowUp(id: string) {
+      await this.ensureLogin()
+      await requestFollowUp(id)
+      await this.loadNotifications()
     },
     async loadFees() {
       await this.ensureLogin()

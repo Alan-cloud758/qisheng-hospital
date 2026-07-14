@@ -13,6 +13,14 @@ function chooseSlot(slot: (typeof store.slots)[number]) {
   uni.navigateTo({ url: '/pages/appointment/index' })
 }
 
+function toggleFavorite(doctor: (typeof store.doctors)[number]) {
+  if (doctor.isFavorite) {
+    void store.unfavoriteDoctor(doctor.id)
+  } else {
+    void store.favoriteDoctor(doctor.id)
+  }
+}
+
 onMounted(() => {
   const pages = getCurrentPages()
   const current = pages[pages.length - 1] as unknown as { options?: Record<string, string> }
@@ -31,6 +39,7 @@ onMounted(() => {
       <text class="name">{{ doctor.name }} · {{ doctor.title }}</text>
       <text class="muted">{{ doctor.department?.name }}｜{{ doctor.specialty }}</text>
       <text class="fee">¥{{ doctor.consultationFee }}</text>
+      <button class="favorite" @tap.stop="toggleFavorite(doctor)">{{ doctor.isFavorite ? '已收藏' : '收藏医生' }}</button>
     </view>
 
     <view v-if="store.slots.length" class="panel">
@@ -68,6 +77,10 @@ onMounted(() => {
   color: #126c5b;
   display: block;
   margin-top: 12rpx;
+}
+
+.favorite {
+  margin-top: 14rpx;
 }
 
 .slot-row {

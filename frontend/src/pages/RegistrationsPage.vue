@@ -32,6 +32,9 @@
           <template #default="{ row }">{{ row.doctor?.user?.displayName || '-' }}</template>
         </el-table-column>
         <el-table-column label="状态" prop="status" width="120" />
+        <el-table-column label="排队号" width="100">
+          <template #default="{ row }">{{ row.queueTicket?.queueNo || '-' }}</template>
+        </el-table-column>
         <el-table-column label="改约历史" min-width="150">
           <template #default="{ row }">
             {{ changeLogText(row) }}

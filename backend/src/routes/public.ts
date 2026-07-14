@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { AppointmentSlotStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
+import { authUserFromHeader } from '../middleware/auth'
 import { releaseExpiredSlotLocks } from '../services/scheduling'
 
 export const publicRouter = Router()
@@ -80,6 +81,7 @@ publicRouter.get('/departments/:id/doctors', async (req, res, next) => {
 publicRouter.get('/doctors', async (req, res, next) => {
   try {
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId : undefined
+    const user = authUserFromHeader(req.headers.authorization)
     const doctors = await prisma.doctorProfile.findMany({
       where: { isActive: true, ...(departmentId ? { departmentId } : {}) },
       orderBy: { createdAt: 'asc' },
@@ -88,6 +90,9 @@ publicRouter.get('/doctors', async (req, res, next) => {
         department: { select: { id: true, name: true } },
       },
     })
+    const favoriteDoctorIds = user
+      ? new Set((await prisma.favoriteDoctor.findMany({ where: { userId: user.id }, select: { doctorId: true } })).map((item) => item.doctorId))
+      : new Set<string>()
 
     res.json({
       items: doctors.map((doctor) => ({
@@ -98,6 +103,7 @@ publicRouter.get('/doctors', async (req, res, next) => {
         introduction: doctor.introduction,
         consultationFee: Number(doctor.consultationFee),
         department: doctor.department,
+        isFavorite: favoriteDoctorIds.has(doctor.id),
       })),
     })
   } catch (error) {

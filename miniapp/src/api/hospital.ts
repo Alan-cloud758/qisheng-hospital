@@ -16,6 +16,7 @@ export interface DoctorSummary {
   introduction?: string | null
   consultationFee: number
   department?: { id: string; name: string }
+  isFavorite?: boolean
 }
 
 export interface DoctorScheduleSlot {
@@ -47,6 +48,28 @@ export interface Registration {
   visitMember?: { name: string }
   slot?: { startTime: string; endTime: string }
   paymentOrder?: { id: string; status: string; amount: string | number }
+  queueTicket?: { id: string; queueNo: number; status: string; ahead?: number; waitMinutes?: number; currentQueueNo?: number }
+}
+
+export interface PatientNotification {
+  id: string
+  title: string
+  content: string
+  readAt?: string | null
+  createdAt: string
+}
+
+export interface QueueTicket {
+  id: string
+  queueNo: number
+  status: string
+  ahead: number
+  waitMinutes: number
+  currentTicketId?: string | null
+  currentQueueNo?: number
+  doctor?: { user?: { displayName?: string } }
+  department?: { name?: string }
+  registration?: { visitMember?: { name?: string }; slot?: { startTime: string; endTime: string } }
 }
 
 export interface Announcement {
@@ -120,8 +143,32 @@ export function fetchRegistrations() {
   return request<{ items: Registration[] }>('/mini/registrations')
 }
 
+export function fetchNotifications() {
+  return request<{ items: PatientNotification[] }>('/mini/notifications')
+}
+
+export function markNotificationRead(id: string) {
+  return request<{ item: PatientNotification }>('/mini/notifications/' + id + '/read', { method: 'POST' })
+}
+
+export function fetchQueueTickets() {
+  return request<{ items: QueueTicket[] }>('/mini/queue')
+}
+
+export function favoriteDoctor(id: string) {
+  return request<{ item: unknown }>('/mini/doctors/' + id + '/favorite', { method: 'POST' })
+}
+
+export function unfavoriteDoctor(id: string) {
+  return request<{ item: unknown }>('/mini/doctors/' + id + '/favorite', { method: 'DELETE' })
+}
+
 export function fetchVisitRecords() {
   return request<{ items: unknown[] }>('/mini/visit-records')
+}
+
+export function requestFollowUp(id: string) {
+  return request<{ item: PatientNotification }>('/mini/visit-records/' + id + '/follow-up', { method: 'POST' })
 }
 
 export function fetchFees() {
