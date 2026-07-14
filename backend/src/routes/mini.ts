@@ -364,6 +364,30 @@ miniRouter.get('/visit-records', async (req, res, next) => {
   }
 })
 
+miniRouter.get('/inpatient', async (req, res, next) => {
+  try {
+    const items = await prisma.inpatientAdmission.findMany({
+      where: { userId: req.user!.id },
+      include: {
+        visitMember: true,
+        attendingDoctor: { include: { user: true, department: true } },
+        ward: true,
+        currentBed: { include: { ward: true } },
+        bedAssignments: { include: { bed: { include: { ward: true } } }, orderBy: { assignedAt: 'desc' } },
+        orders: { orderBy: { createdAt: 'desc' } },
+        charges: { include: { paymentOrder: true }, orderBy: { createdAt: 'desc' } },
+        dischargeRequests: { orderBy: { createdAt: 'desc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    })
+
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
 miniRouter.post('/visit-records/:id/follow-up', async (req, res, next) => {
   try {
     const record = await prisma.encounter.findFirst({

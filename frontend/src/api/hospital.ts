@@ -282,6 +282,61 @@ export async function fetchDrugStockAlerts() {
   return response.data.items
 }
 
+export async function fetchNurseAdmissions() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/nurse/admissions')
+  return response.data.items
+}
+
+export async function fetchNurseBeds() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/nurse/beds')
+  return response.data.items
+}
+
+export async function createInpatientAdmission(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/staff/nurse/admissions', data)
+  return response.data.item
+}
+
+export async function assignInpatientBed(id: string, data: { bedId: string; reason?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nurse/admissions/${id}/assign-bed`, data)
+  return response.data.item
+}
+
+export async function transferInpatientBed(id: string, data: { bedId: string; reason?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nurse/admissions/${id}/transfer-bed`, data)
+  return response.data.item
+}
+
+export async function approveDischarge(id: string, data: { approvalNote?: string } = {}) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nurse/discharges/${id}/approve`, data)
+  return response.data.item
+}
+
+export async function settleDischarge(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nurse/discharges/${id}/settle`, {})
+  return response.data.item
+}
+
+export async function completeDischarge(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nurse/discharges/${id}/complete`, {})
+  return response.data.item
+}
+
+export async function fetchDoctorInpatients() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/inpatients')
+  return response.data.items
+}
+
+export async function createInpatientOrder(id: string, data: { doctorId?: string; type: string; content: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/inpatients/${id}/orders`, data)
+  return response.data.item
+}
+
+export async function requestInpatientDischarge(id: string, data: { reason: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/inpatients/${id}/discharge-request`, data)
+  return response.data.item
+}
+
 export async function fetchClinicalTemplateResource(resource: string) {
   const response = await apiClient.get<{ items: unknown[] }>(`/admin/${resource}`)
   return response.data.items

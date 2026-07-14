@@ -16,6 +16,7 @@ import {
   assertCanCompleteEncounter,
   assertCanStartEncounter,
 } from '../services/outpatient-state'
+import { createInpatientOrder, requestDischarge } from '../services/inpatient'
 import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
 import {
   adjustStock,
@@ -44,6 +45,16 @@ const diagnosisSchema = z.object({
 const orderSchema = z.object({
   type: z.string().min(1),
   content: z.string().min(1),
+})
+
+const inpatientOrderSchema = z.object({
+  doctorId: z.string().optional(),
+  type: z.string().min(1),
+  content: z.string().min(1),
+})
+
+const dischargeRequestSchema = z.object({
+  reason: z.string().min(1),
 })
 
 const prescriptionSchema = z.object({
@@ -261,6 +272,17 @@ async function findEncounterForDoctor(encounterId: string, doctorId?: string) {
     throw new Error('不能操作其他医生的接诊记录')
   }
   return encounter
+}
+
+async function findInpatientForDoctor(admissionId: string, doctorId?: string) {
+  const admission = await prisma.inpatientAdmission.findUnique({ where: { id: admissionId } })
+  if (!admission) {
+    throw new Error('住院记录不存在')
+  }
+  if (doctorId && admission.attendingDoctorId !== doctorId) {
+    throw new Error('不能操作其他医生的住院记录')
+  }
+  return admission
 }
 
 async function startRegistrationEncounter(registrationId: string, currentUserId: string, isAdmin: boolean) {
@@ -489,6 +511,73 @@ staffRouter.post('/doctor/encounters/:id/complete', requireRole('DOCTOR', 'ADMIN
     })
 
     res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.get('/doctor/inpatients', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const doctor = await requireDoctorProfileForRequest(req)
+    const items = await prisma.inpatientAdmission.findMany({
+      where: doctor ? { attendingDoctorId: doctor.id } : undefined,
+      include: {
+        user: true,
+        visitMember: true,
+        attendingDoctor: { include: { user: true, department: true } },
+        ward: true,
+        currentBed: { include: { ward: true } },
+        bedAssignments: { include: { bed: { include: { ward: true } } }, orderBy: { assignedAt: 'desc' } },
+        medicalRecords: { include: { doctor: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
+        orders: { include: { doctor: { include: { user: true } }, charges: true }, orderBy: { createdAt: 'desc' } },
+        charges: { include: { paymentOrder: true }, orderBy: { createdAt: 'desc' } },
+        dischargeRequests: { orderBy: { createdAt: 'desc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+    res.json({ items })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/inpatients/:id/orders', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = inpatientOrderSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const admission = await findInpatientForDoctor(routeId(req.params.id), doctor?.id)
+    const doctorId = doctor?.id ?? input.doctorId ?? admission.attendingDoctorId
+    if (!doctorId) {
+      res.status(400).json({ message: 'doctorId is required' })
+      return
+    }
+    const item = await createInpatientOrder(admission.id, { doctorId, type: input.type, content: input.content })
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/doctor/inpatients/:id/discharge-request', requireRole('DOCTOR', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = dischargeRequestSchema.parse(req.body)
+    const doctor = await requireDoctorProfileForRequest(req)
+    const admission = await findInpatientForDoctor(routeId(req.params.id), doctor?.id)
+    const item = await requestDischarge(admission.id, { doctorId: doctor?.id ?? admission.attendingDoctorId ?? undefined, reason: input.reason })
+    res.status(201).json({ item })
   } catch (error) {
     if (error instanceof Error) {
       res.status(400).json({ message: error.message })

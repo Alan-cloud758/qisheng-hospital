@@ -88,6 +88,22 @@ export interface FeeOrder {
   refundOrders?: unknown[]
 }
 
+export interface InpatientAdmission {
+  id: string
+  admissionNo: string
+  status: string
+  diagnosis?: string | null
+  admittedAt?: string | null
+  dischargedAt?: string | null
+  visitMember?: { name?: string }
+  attendingDoctor?: { user?: { displayName?: string }; department?: { name?: string } }
+  ward?: { name?: string }
+  currentBed?: { bedNo?: string; ward?: { name?: string } }
+  orders?: Array<{ id: string; type: string; content: string; status: string }>
+  charges?: Array<{ id: string; itemName: string; amount: string | number; status: string; paymentOrder?: { id: string; status: string } }>
+  dischargeRequests?: Array<{ id: string; status: string; reason: string }>
+}
+
 export function loginPatient(username = 'patient_demo', password = 'Qisheng@123') {
   return request<{ token: string; user: unknown }>('/auth/login', {
     method: 'POST',
@@ -173,4 +189,8 @@ export function requestFollowUp(id: string) {
 
 export function fetchFees() {
   return request<{ items: FeeOrder[] }>('/mini/fees')
+}
+
+export function fetchInpatientAdmissions() {
+  return request<{ items: InpatientAdmission[] }>('/mini/inpatient')
 }

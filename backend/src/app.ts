@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import { adminRouter } from './routes/admin'
 import { authRouter } from './routes/auth'
 import { miniRouter } from './routes/mini'
+import { nurseRouter } from './routes/nurse'
 import { publicRouter } from './routes/public'
 import { staffRouter } from './routes/staff'
 
@@ -18,6 +19,7 @@ export function createApp() {
   app.use('/api/public', publicRouter)
   app.use('/api/mini', miniRouter)
   app.use('/api/admin', adminRouter)
+  app.use('/api/staff/nurse', nurseRouter)
   app.use('/api/staff', staffRouter)
 
   app.get('/healthz', (_req, res) => {

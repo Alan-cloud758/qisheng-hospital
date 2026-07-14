@@ -116,6 +116,22 @@ const adminResources: Record<string, AdminResourceConfig> = {
     orderBy: { code: 'asc' },
     activeField: 'isActive',
   },
+  wards: {
+    delegate: prisma.ward as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'floor', 'nurseStation'],
+    writableFields: ['campusId', 'code', 'name', 'floor', 'nurseStation', 'isActive'],
+    include: { campus: true, beds: true },
+    orderBy: { code: 'asc' },
+    activeField: 'isActive',
+  },
+  beds: {
+    delegate: prisma.bed as unknown as AdminDelegate,
+    searchableFields: ['bedNo'],
+    writableFields: ['wardId', 'bedNo', 'dailyRate', 'isActive'],
+    include: { ward: { include: { campus: true } }, assignments: { include: { admission: { include: { visitMember: true } } } } },
+    orderBy: [{ wardId: 'asc' }, { bedNo: 'asc' }],
+    activeField: 'isActive',
+  },
   announcements: {
     delegate: prisma.announcement as unknown as AdminDelegate,
     searchableFields: ['title', 'content'],

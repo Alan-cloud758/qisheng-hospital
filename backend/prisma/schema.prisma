@@ -95,6 +95,49 @@ enum DrugStockMovementType {
   RETURN
 }
 
+enum BedStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  DISABLED
+}
+
+enum InpatientAdmissionStatus {
+  PENDING
+  ADMITTED
+  DISCHARGE_REQUESTED
+  DISCHARGE_APPROVED
+  SETTLED
+  DISCHARGED
+  CANCELLED
+}
+
+enum BedAssignmentStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum InpatientOrderStatus {
+  ACTIVE
+  STOPPED
+  CANCELLED
+}
+
+enum InpatientChargeStatus {
+  UNBILLED
+  BILLED
+  CANCELLED
+}
+
+enum DischargeRequestStatus {
+  REQUESTED
+  APPROVED
+  SETTLED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id             String          @id @default(cuid())
   username       String          @unique @db.VarChar(64)
@@ -120,6 +163,8 @@ model User {
   prescriptionReviewLogs PrescriptionReviewLog[]
   notifications PatientNotification[]
   favoriteDoctors FavoriteDoctor[]
+  inpatientAdmissions InpatientAdmission[] @relation("InpatientPatientUser")
+  dischargeApprovals DischargeRequest[] @relation("DischargeApprover")
 }
 
 model Role {
@@ -189,6 +234,7 @@ model HospitalCampus {
   updatedAt   DateTime     @updatedAt
   departments Department[]
   clinicRooms ClinicRoom[]
+  wards       Ward[]
 }
 
 model Department {
@@ -249,6 +295,10 @@ model DoctorProfile {
   queueTickets   QueueTicket[]
   queueState     DoctorQueueState?
   favoritedBy    FavoriteDoctor[]
+  inpatientAdmissions InpatientAdmission[]
+  inpatientRecords InpatientMedicalRecord[]
+  inpatientOrders InpatientOrder[]
+  dischargeRequests DischargeRequest[]
 }
 
 model PatientProfile {
@@ -281,6 +331,7 @@ model VisitMember {
   updatedAt       DateTime       @updatedAt
   patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
   registrations   Registration[]
+  inpatientAdmissions InpatientAdmission[]
 }
 
 model DoctorSchedule {
@@ -512,6 +563,7 @@ model FeeItem {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  inpatientCharges InpatientCharge[]
 }
 
 model PaymentOrder {
@@ -537,6 +589,161 @@ model PaymentOrder {
   transactions   PaymentTransaction[]
   refundOrders   RefundOrder[]
   settlements    PaymentSettlement[]
+  inpatientCharges InpatientCharge[]
+}
+
+model Ward {
+  id           String         @id @default(cuid())
+  campusId     String
+  code         String         @unique @db.VarChar(64)
+  name         String         @db.VarChar(120)
+  floor        String?        @db.VarChar(40)
+  nurseStation String?        @db.VarChar(120)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  campus       HospitalCampus @relation(fields: [campusId], references: [id])
+  beds         Bed[]
+  admissions   InpatientAdmission[]
+}
+
+model Bed {
+  id                  String               @id @default(cuid())
+  wardId              String
+  bedNo               String               @db.VarChar(40)
+  status              BedStatus            @default(AVAILABLE)
+  dailyRate           Decimal              @default(0.00) @db.Decimal(10, 2)
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  ward                Ward                 @relation(fields: [wardId], references: [id])
+  assignments         BedAssignment[]
+  currentAdmissions   InpatientAdmission[] @relation("CurrentBed")
+
+  @@unique([wardId, bedNo])
+  @@index([wardId, status])
+}
+
+model InpatientAdmission {
+  id                String                   @id @default(cuid())
+  admissionNo       String                   @unique @db.VarChar(80)
+  status            InpatientAdmissionStatus @default(PENDING)
+  userId            String
+  visitMemberId     String
+  attendingDoctorId String?
+  wardId            String?
+  currentBedId      String?
+  diagnosis         String?                  @db.VarChar(500)
+  notes             String?                  @db.VarChar(1000)
+  depositAmount     Decimal                  @default(0.00) @db.Decimal(10, 2)
+  bedVersion        Int                      @default(0)
+  admittedAt        DateTime?
+  dischargedAt      DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  user              User                     @relation("InpatientPatientUser", fields: [userId], references: [id])
+  visitMember       VisitMember              @relation(fields: [visitMemberId], references: [id])
+  attendingDoctor   DoctorProfile?           @relation(fields: [attendingDoctorId], references: [id], onDelete: SetNull)
+  ward              Ward?                    @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  currentBed        Bed?                     @relation("CurrentBed", fields: [currentBedId], references: [id], onDelete: SetNull)
+  bedAssignments    BedAssignment[]
+  medicalRecords    InpatientMedicalRecord[]
+  orders            InpatientOrder[]
+  charges           InpatientCharge[]
+  dischargeRequests DischargeRequest[]
+
+  @@index([userId, status, createdAt])
+  @@index([visitMemberId, status])
+}
+
+model BedAssignment {
+  id          String              @id @default(cuid())
+  admissionId String
+  bedId       String
+  status      BedAssignmentStatus @default(ACTIVE)
+  assignedAt  DateTime            @default(now())
+  releasedAt  DateTime?
+  reason      String?             @db.VarChar(500)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  admission   InpatientAdmission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  bed         Bed                 @relation(fields: [bedId], references: [id])
+
+  @@index([admissionId, status])
+  @@index([bedId, status])
+}
+
+model InpatientMedicalRecord {
+  id          String             @id @default(cuid())
+  admissionId String
+  doctorId    String?
+  summary     String             @db.VarChar(1000)
+  plan        String?            @db.VarChar(1000)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  admission   InpatientAdmission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  doctor      DoctorProfile?     @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+}
+
+model InpatientOrder {
+  id          String               @id @default(cuid())
+  admissionId String
+  doctorId    String
+  type        String               @db.VarChar(80)
+  content     String               @db.VarChar(500)
+  status      InpatientOrderStatus @default(ACTIVE)
+  startedAt   DateTime             @default(now())
+  stoppedAt   DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  admission   InpatientAdmission   @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  doctor      DoctorProfile        @relation(fields: [doctorId], references: [id])
+  charges     InpatientCharge[]
+
+  @@index([admissionId, status])
+}
+
+model InpatientCharge {
+  id             String                @id @default(cuid())
+  admissionId    String
+  orderId        String?
+  feeItemId      String?
+  paymentOrderId String?
+  itemName       String                @db.VarChar(160)
+  quantity       Int                   @default(1)
+  unitPrice      Decimal               @db.Decimal(10, 2)
+  amount         Decimal               @db.Decimal(10, 2)
+  status         InpatientChargeStatus @default(UNBILLED)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  admission      InpatientAdmission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  order          InpatientOrder?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  feeItem        FeeItem?              @relation(fields: [feeItemId], references: [id], onDelete: SetNull)
+  paymentOrder   PaymentOrder?         @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+
+  @@index([admissionId, status])
+  @@index([paymentOrderId])
+}
+
+model DischargeRequest {
+  id                  String                 @id @default(cuid())
+  admissionId         String
+  requestedByDoctorId String?
+  approvedByUserId    String?
+  status              DischargeRequestStatus @default(REQUESTED)
+  reason              String                 @db.VarChar(500)
+  approvalNote        String?                @db.VarChar(500)
+  requestedAt         DateTime               @default(now())
+  approvedAt          DateTime?
+  settledAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  admission           InpatientAdmission     @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  requestedByDoctor   DoctorProfile?         @relation(fields: [requestedByDoctorId], references: [id], onDelete: SetNull)
+  approvedBy          User?                  @relation("DischargeApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([admissionId, status])
 }
 
 model PaymentOrderItem {
