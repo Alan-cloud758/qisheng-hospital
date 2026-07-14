@@ -7,6 +7,7 @@ import DashboardPage from '../pages/DashboardPage.vue'
 import DoctorWorkbenchPage from '../pages/DoctorWorkbenchPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import ModuleListPage from '../pages/ModuleListPage.vue'
+import PaymentHistoryPage from '../pages/PaymentHistoryPage.vue'
 import PharmacyWorkbenchPage from '../pages/PharmacyWorkbenchPage.vue'
 import RegistrationsPage from '../pages/RegistrationsPage.vue'
 import SchedulesPage from '../pages/SchedulesPage.vue'
@@ -156,12 +157,7 @@ export const routes: RouteRecordRaw[] = [
       ]),
       { path: 'doctor', component: DoctorWorkbenchPage },
       { path: 'cashier', component: CashierWorkbenchPage },
-      modulePage('payment-history', '支付记录', '查看全部支付订单及明细。', 'payment-orders', [
-        { key: 'orderNo', label: '订单号' },
-        { key: 'title', label: '标题' },
-        { key: 'amount', label: '金额' },
-        { key: 'status', label: '状态' },
-      ]),
+      { path: 'payment-history', component: PaymentHistoryPage },
       adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },

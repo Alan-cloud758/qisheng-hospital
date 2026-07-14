@@ -121,8 +121,28 @@ export async function fetchPaymentOrders() {
   return response.data.items
 }
 
-export async function payOrder(id: string) {
-  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/pay`)
+export async function fetchAdminPaymentOrders() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/payment-orders')
+  return response.data.items
+}
+
+export async function payOrder(id: string, payMethod = 'MOCK_CASH') {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/pay`, { payMethod })
+  return response.data.item
+}
+
+export async function cancelPaymentOrder(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/cancel`)
+  return response.data.item
+}
+
+export async function requestPaymentRefund(id: string, data: { amount?: number; reason: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/refunds`, data)
+  return response.data.item
+}
+
+export async function executePaymentRefund(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/refunds/${id}/execute`)
   return response.data.item
 }
 

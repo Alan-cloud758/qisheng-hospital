@@ -55,6 +55,16 @@ export interface Announcement {
   content: string
 }
 
+export interface FeeOrder {
+  id: string
+  orderNo: string
+  title: string
+  amount: string | number
+  status: string
+  transactions?: unknown[]
+  refundOrders?: unknown[]
+}
+
 export function loginPatient(username = 'patient_demo', password = 'Qisheng@123') {
   return request<{ token: string; user: unknown }>('/auth/login', {
     method: 'POST',
@@ -112,4 +122,8 @@ export function fetchRegistrations() {
 
 export function fetchVisitRecords() {
   return request<{ items: unknown[] }>('/mini/visit-records')
+}
+
+export function fetchFees() {
+  return request<{ items: FeeOrder[] }>('/mini/fees')
 }

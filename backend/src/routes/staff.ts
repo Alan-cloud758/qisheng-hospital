@@ -1,15 +1,15 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { EncounterStatus, PaymentStatus, PrescriptionStatus, RegistrationStatus } from '../generated/prisma/enums'
+import { EncounterStatus, PrescriptionStatus, RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
 import {
   assertCanCompleteEncounter,
   assertCanDispensePrescription,
-  assertCanPayOrder,
   assertCanReviewPrescription,
   assertCanStartEncounter,
 } from '../services/outpatient-state'
+import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
 
 export const staffRouter = Router()
 
@@ -267,7 +267,7 @@ staffRouter.post('/doctor/encounters/:id/complete', requireRole('DOCTOR', 'ADMIN
 staffRouter.get('/cashier/payment-orders', requireRole('CASHIER', 'ADMIN'), async (_req, res, next) => {
   try {
     const orders = await prisma.paymentOrder.findMany({
-      include: { user: true, registration: { include: { visitMember: true, department: true } }, items: true },
+      include: { user: true, registration: { include: { visitMember: true, department: true } }, items: true, transactions: true, refundOrders: { include: { transactions: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
     })
@@ -280,17 +280,48 @@ staffRouter.get('/cashier/payment-orders', requireRole('CASHIER', 'ADMIN'), asyn
 
 staffRouter.post('/cashier/payment-orders/:id/pay', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
   try {
-    const order = await prisma.paymentOrder.findUnique({ where: { id: routeId(req.params.id) } })
-    if (!order) {
-      res.status(404).json({ message: '支付订单不存在' })
+    const input = z.object({ payMethod: z.string().optional() }).parse(req.body ?? {})
+    const item = await mockPayOrder(routeId(req.params.id), input.payMethod, req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
       return
     }
-    assertCanPayOrder(order.status)
-    const item = await prisma.paymentOrder.update({
-      where: { id: order.id },
-      data: { status: PaymentStatus.PAID, paidAt: new Date() },
-      include: { items: true, registration: true },
-    })
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/payment-orders/:id/cancel', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await cancelPaymentOrder(routeId(req.params.id), req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/payment-orders/:id/refunds', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = z.object({ amount: z.coerce.number().positive().optional(), reason: z.string().min(1) }).parse(req.body)
+    const item = await requestRefund(routeId(req.params.id), input, req.user?.id)
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/refunds/:id/execute', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await executeRefund(routeId(req.params.id), req.user?.id)
     res.json({ item })
   } catch (error) {
     if (error instanceof Error) {

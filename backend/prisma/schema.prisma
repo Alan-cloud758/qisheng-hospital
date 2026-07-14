@@ -35,6 +35,19 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentBusinessType {
+  REGISTRATION
+  OUTPATIENT
+  INPATIENT
+}
+
+enum RefundStatus {
+  REQUESTED
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
 enum PrescriptionStatus {
   DRAFT
   SUBMITTED
@@ -78,6 +91,7 @@ model User {
   scheduleChangeLogs     ScheduleChangeLog[]
   registrationChangeLogs RegistrationChangeLog[]
   lockedSlots    AppointmentSlot[] @relation("SlotLockOwner")
+  requestedRefunds RefundOrder[]
 }
 
 model Role {
@@ -417,14 +431,24 @@ model PaymentOrder {
   orderNo        String        @unique @db.VarChar(64)
   title          String        @db.VarChar(160)
   amount         Decimal       @db.Decimal(10, 2)
+  businessType   PaymentBusinessType @default(REGISTRATION)
+  sourceType     String?       @db.VarChar(80)
+  sourceId       String?       @db.VarChar(120)
+  payMethod      String?       @db.VarChar(40)
   status         PaymentStatus @default(PENDING)
   userId         String
   paidAt         DateTime?
+  cancelledAt    DateTime?
+  refundedAt     DateTime?
+  refundLockedAt DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   user           User          @relation(fields: [userId], references: [id])
   registration   Registration?
   items          PaymentOrderItem[]
+  transactions   PaymentTransaction[]
+  refundOrders   RefundOrder[]
+  settlements    PaymentSettlement[]
 }
 
 model PaymentOrderItem {
@@ -435,6 +459,61 @@ model PaymentOrderItem {
   quantity       Int          @default(1)
   unitPrice      Decimal      @db.Decimal(10, 2)
   amount         Decimal      @db.Decimal(10, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+}
+
+model PaymentTransaction {
+  id              String       @id @default(cuid())
+  paymentOrderId  String
+  transactionNo   String       @unique @db.VarChar(80)
+  providerTradeNo String?      @db.VarChar(120)
+  payMethod       String       @db.VarChar(40)
+  amount          Decimal      @db.Decimal(10, 2)
+  status          String       @db.VarChar(40)
+  raw             Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  paymentOrder    PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+}
+
+model RefundOrder {
+  id             String              @id @default(cuid())
+  paymentOrderId String
+  refundNo       String              @unique @db.VarChar(80)
+  amount         Decimal             @db.Decimal(10, 2)
+  reason         String              @db.VarChar(500)
+  status         RefundStatus         @default(REQUESTED)
+  requestedById  String?
+  executedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  paymentOrder   PaymentOrder        @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+  requestedBy    User?               @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  transactions   RefundTransaction[]
+}
+
+model RefundTransaction {
+  id               String      @id @default(cuid())
+  refundOrderId     String
+  transactionNo     String      @unique @db.VarChar(80)
+  providerRefundNo  String?     @db.VarChar(120)
+  amount            Decimal     @db.Decimal(10, 2)
+  status            String      @db.VarChar(40)
+  raw               Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  refundOrder       RefundOrder @relation(fields: [refundOrderId], references: [id], onDelete: Cascade)
+}
+
+model PaymentSettlement {
+  id             String       @id @default(cuid())
+  paymentOrderId String
+  settlementNo   String       @unique @db.VarChar(80)
+  amount         Decimal      @db.Decimal(10, 2)
+  status         String       @db.VarChar(40)
+  settledAt      DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)

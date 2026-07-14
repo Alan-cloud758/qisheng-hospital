@@ -6,6 +6,7 @@ import {
   fetchDepartments,
   fetchDoctorSlots,
   fetchDoctors,
+  fetchFees,
   fetchRegistrations,
   fetchVisitMembers,
   fetchVisitRecords,
@@ -17,6 +18,7 @@ import {
   type DepartmentSummary,
   type DoctorScheduleSlot,
   type DoctorSummary,
+  type FeeOrder,
   type Registration,
   type VisitMember,
 } from '../api/hospital'
@@ -30,6 +32,7 @@ export const usePatientStore = defineStore('patient', {
     visitMembers: [] as VisitMember[],
     registrations: [] as Registration[],
     visitRecords: [] as unknown[],
+    fees: [] as FeeOrder[],
     selectedDoctorId: '',
     selectedSlot: null as DoctorScheduleSlot | null,
     loading: false,
@@ -131,6 +134,11 @@ export const usePatientStore = defineStore('patient', {
       await this.ensureLogin()
       const response = await fetchVisitRecords()
       this.visitRecords = response.items
+    },
+    async loadFees() {
+      await this.ensureLogin()
+      const response = await fetchFees()
+      this.fees = response.items
     },
   },
 })

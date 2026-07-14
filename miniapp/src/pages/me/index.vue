@@ -12,6 +12,7 @@ function navigateTo(path: string) {
     </view>
     <view class="panel nav" @tap="navigateTo('/pages/members/index')">就诊人管理</view>
     <view class="panel nav" @tap="navigateTo('/pages/appointments/index')">我的预约</view>
+    <view class="panel nav" @tap="navigateTo('/pages/fees/index')">费用记录</view>
   </view>
 </template>
 

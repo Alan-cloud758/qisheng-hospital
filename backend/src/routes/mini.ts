@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { AppointmentSlotStatus, PaymentStatus, RegistrationStatus } from '../generated/prisma/enums'
+import { AppointmentSlotStatus, RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
 import { auth } from '../middleware/auth'
 import { bookAppointment } from '../services/appointments'
 import { assertCanCancelRegistration } from '../services/outpatient-state'
 import { lockSlot, rescheduleRegistration } from '../services/scheduling'
+import { mockPayOrder } from '../services/payment'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -252,12 +253,30 @@ miniRouter.get('/visit-records', async (req, res, next) => {
 
 miniRouter.post('/payments/:id/mock-pay', async (req, res, next) => {
   try {
-    const payment = await prisma.paymentOrder.update({
-      where: { id: req.params.id },
-      data: { status: PaymentStatus.PAID, paidAt: new Date() },
-    })
+    const order = await prisma.paymentOrder.findFirst({ where: { id: req.params.id, userId: req.user!.id } })
+    if (!order) {
+      res.status(404).json({ message: '支付订单不存在' })
+      return
+    }
+
+    const payment = await mockPayOrder(req.params.id, 'MINI_MOCK', req.user?.id)
 
     res.json({ item: payment })
+  } catch (error) {
+    next(error)
+  }
+})
+
+miniRouter.get('/fees', async (req, res, next) => {
+  try {
+    const items = await prisma.paymentOrder.findMany({
+      where: { userId: req.user!.id },
+      include: { items: true, transactions: true, refundOrders: { include: { transactions: true } }, registration: { include: { department: true, doctor: { include: { user: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+
+    res.json({ items })
   } catch (error) {
     next(error)
   }

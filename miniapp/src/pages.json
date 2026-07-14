@@ -5,6 +5,7 @@
     { "path": "pages/doctors/index", "style": { "navigationBarTitleText": "选择医生" } },
     { "path": "pages/appointment/index", "style": { "navigationBarTitleText": "确认预约" } },
     { "path": "pages/appointments/index", "style": { "navigationBarTitleText": "我的预约" } },
+    { "path": "pages/fees/index", "style": { "navigationBarTitleText": "费用记录" } },
     { "path": "pages/members/index", "style": { "navigationBarTitleText": "就诊人" } },
     { "path": "pages/visit-records/index", "style": { "navigationBarTitleText": "就诊记录" } },
     { "path": "pages/me/index", "style": { "navigationBarTitleText": "我的" } },

@@ -474,7 +474,7 @@ adminRouter.get('/slots', async (_req, res, next) => {
 adminRouter.get('/payment-orders', async (_req, res, next) => {
   try {
     const items = await prisma.paymentOrder.findMany({
-      include: { user: true, registration: true, items: true },
+      include: { user: true, registration: true, items: true, transactions: true, refundOrders: { include: { transactions: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     })
