@@ -57,7 +57,7 @@ function display(row: Record<string, unknown>, path: string) {
 async function load() {
   loading.value = true
   try {
-    rows.value = (await fetchAdminResource(props.resource)) as Record<string, unknown>[]
+    rows.value = (await fetchAdminResource(props.resource)).items as Record<string, unknown>[]
   } finally {
     loading.value = false
   }

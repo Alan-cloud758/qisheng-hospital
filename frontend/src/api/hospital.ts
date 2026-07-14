@@ -46,9 +46,29 @@ export async function fetchRegistrations() {
   return response.data.items
 }
 
-export async function fetchAdminResource(path: string) {
-  const response = await apiClient.get<{ items: unknown[] }>(`/admin/${path}`)
-  return response.data.items
+export interface PaginatedItems<T = unknown> {
+  items: T[]
+  pagination: { page: number; pageSize: number; total: number }
+}
+
+export async function fetchAdminResource(resource: string, params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<PaginatedItems>(`/admin/${resource}`, { params })
+  return response.data
+}
+
+export async function createAdminResource(resource: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/${resource}`, data)
+  return response.data.item
+}
+
+export async function updateAdminResource(resource: string, id: string, data: Record<string, unknown>) {
+  const response = await apiClient.put<{ item: unknown }>(`/admin/${resource}/${id}`, data)
+  return response.data.item
+}
+
+export async function toggleAdminResource(resource: string, id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/${resource}/${id}/toggle-active`)
+  return response.data.item
 }
 
 export async function checkInRegistration(id: string) {

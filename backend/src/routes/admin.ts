@@ -2,11 +2,133 @@ import { Router } from 'express'
 import { RegistrationStatus } from '../generated/prisma/enums'
 import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
+import type { AdminDelegate, AdminResourceConfig } from '../services/admin-crud'
+import { hashAccountPassword, registerAdminResourceRoutes } from '../services/admin-crud'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
 
 export const adminRouter = Router()
 
 adminRouter.use(auth, requireRole('ADMIN'))
+
+const adminResources: Record<string, AdminResourceConfig> = {
+  accounts: {
+    delegate: prisma.user as unknown as AdminDelegate,
+    searchableFields: ['username', 'displayName', 'phone', 'email'],
+    writableFields: ['username', 'phone', 'email', 'password', 'displayName', 'status'],
+    select: {
+      id: true,
+      username: true,
+      phone: true,
+      email: true,
+      displayName: true,
+      status: true,
+      lastLoginAt: true,
+      createdAt: true,
+      updatedAt: true,
+      roles: { include: { role: true } },
+      doctorProfile: true,
+      patientProfile: true,
+    },
+    orderBy: { createdAt: 'desc' },
+    activeField: 'status',
+    beforeWrite: hashAccountPassword,
+  },
+  roles: {
+    delegate: prisma.role as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'description'],
+    writableFields: ['code', 'name', 'description'],
+    include: { permissions: { include: { permission: true } } },
+    orderBy: { createdAt: 'asc' },
+  },
+  menus: {
+    delegate: prisma.menu as unknown as AdminDelegate,
+    searchableFields: ['code', 'title', 'path'],
+    writableFields: ['code', 'title', 'path', 'icon', 'sortOrder', 'isActive', 'parentId'],
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    activeField: 'isActive',
+  },
+  campuses: {
+    delegate: prisma.hospitalCampus as unknown as AdminDelegate,
+    searchableFields: ['name', 'address', 'phone'],
+    writableFields: ['name', 'address', 'phone', 'isActive'],
+    include: { departments: true, clinicRooms: true },
+    orderBy: { createdAt: 'asc' },
+    activeField: 'isActive',
+  },
+  departments: {
+    delegate: prisma.department as unknown as AdminDelegate,
+    searchableFields: ['name', 'code', 'summary'],
+    writableFields: ['campusId', 'name', 'code', 'summary', 'isActive', 'sortOrder'],
+    include: { campus: true },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    activeField: 'isActive',
+  },
+  'clinic-rooms': {
+    delegate: prisma.clinicRoom as unknown as AdminDelegate,
+    searchableFields: ['name', 'floor'],
+    writableFields: ['campusId', 'departmentId', 'name', 'floor', 'isActive'],
+    include: { campus: true, department: true },
+    orderBy: { createdAt: 'asc' },
+    activeField: 'isActive',
+  },
+  doctors: {
+    delegate: prisma.doctorProfile as unknown as AdminDelegate,
+    searchableFields: ['employeeNo', 'title', 'specialty', 'licenseNo'],
+    writableFields: [
+      'userId',
+      'departmentId',
+      'employeeNo',
+      'title',
+      'specialty',
+      'introduction',
+      'licenseNo',
+      'avatarUrl',
+      'consultationFee',
+      'isActive',
+    ],
+    include: { user: { select: { id: true, username: true, displayName: true, phone: true, email: true, status: true } }, department: true },
+    orderBy: { createdAt: 'asc' },
+    activeField: 'isActive',
+  },
+  'fee-items': {
+    delegate: prisma.feeItem as unknown as AdminDelegate,
+    searchableFields: ['code', 'name'],
+    writableFields: ['code', 'name', 'amount', 'isActive'],
+    orderBy: { code: 'asc' },
+    activeField: 'isActive',
+  },
+  drugs: {
+    delegate: prisma.drugCatalog as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'spec'],
+    writableFields: ['code', 'name', 'spec', 'unit', 'price', 'isActive'],
+    orderBy: { code: 'asc' },
+    activeField: 'isActive',
+  },
+  announcements: {
+    delegate: prisma.announcement as unknown as AdminDelegate,
+    searchableFields: ['title', 'content'],
+    writableFields: ['title', 'content', 'isActive', 'publishedAt'],
+    orderBy: { publishedAt: 'desc' },
+    activeField: 'isActive',
+  },
+  dictionaries: {
+    delegate: prisma.dictionaryCategory as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'description'],
+    writableFields: ['code', 'name', 'description'],
+    include: { items: { orderBy: { sortOrder: 'asc' } } },
+    orderBy: { createdAt: 'asc' },
+  },
+  'dictionary-items': {
+    delegate: prisma.dictionaryItem as unknown as AdminDelegate,
+    searchableFields: ['code', 'label'],
+    writableFields: ['categoryId', 'code', 'label', 'sortOrder', 'isActive'],
+    include: { category: true },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    activeField: 'isActive',
+  },
+}
+
+registerAdminResourceRoutes(adminRouter, adminResources)
 
 adminRouter.get('/dashboard', async (_req, res, next) => {
   try {
@@ -34,42 +156,6 @@ adminRouter.get('/dashboard', async (_req, res, next) => {
   }
 })
 
-adminRouter.get('/accounts', async (_req, res, next) => {
-  try {
-    const users = await prisma.user.findMany({
-      include: { roles: { include: { role: true } }, doctorProfile: true, patientProfile: true },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    })
-
-    res.json({ items: users })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/roles', async (_req, res, next) => {
-  try {
-    const roles = await prisma.role.findMany({
-      include: { permissions: { include: { permission: true } } },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    res.json({ items: roles })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/menus', async (_req, res, next) => {
-  try {
-    const menus = await prisma.menu.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })
-    res.json({ items: menus })
-  } catch (error) {
-    next(error)
-  }
-})
-
 adminRouter.get('/audit-logs', async (_req, res, next) => {
   try {
     const logs = await prisma.auditLog.findMany({
@@ -79,58 +165,6 @@ adminRouter.get('/audit-logs', async (_req, res, next) => {
     })
 
     res.json({ items: logs })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/campuses', async (_req, res, next) => {
-  try {
-    const campuses = await prisma.hospitalCampus.findMany({
-      include: { departments: true, clinicRooms: true },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    res.json({ items: campuses })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/departments', async (_req, res, next) => {
-  try {
-    const departments = await prisma.department.findMany({
-      include: { campus: true },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    })
-
-    res.json({ items: departments })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/doctors', async (_req, res, next) => {
-  try {
-    const doctors = await prisma.doctorProfile.findMany({
-      include: { user: true, department: true },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    res.json({ items: doctors })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/clinic-rooms', async (_req, res, next) => {
-  try {
-    const rooms = await prisma.clinicRoom.findMany({
-      include: { campus: true, department: true },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    res.json({ items: rooms })
   } catch (error) {
     next(error)
   }
@@ -265,15 +299,6 @@ adminRouter.get('/slots', async (_req, res, next) => {
   }
 })
 
-adminRouter.get('/fee-items', async (_req, res, next) => {
-  try {
-    const items = await prisma.feeItem.findMany({ orderBy: { code: 'asc' } })
-    res.json({ items })
-  } catch (error) {
-    next(error)
-  }
-})
-
 adminRouter.get('/payment-orders', async (_req, res, next) => {
   try {
     const items = await prisma.paymentOrder.findMany({
@@ -287,42 +312,12 @@ adminRouter.get('/payment-orders', async (_req, res, next) => {
   }
 })
 
-adminRouter.get('/drugs', async (_req, res, next) => {
-  try {
-    const items = await prisma.drugCatalog.findMany({ orderBy: { code: 'asc' } })
-    res.json({ items })
-  } catch (error) {
-    next(error)
-  }
-})
-
 adminRouter.get('/prescriptions', async (_req, res, next) => {
   try {
     const items = await prisma.prescription.findMany({
       include: { doctor: { include: { user: true } }, encounter: true, items: { include: { drug: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
-    })
-    res.json({ items })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/announcements', async (_req, res, next) => {
-  try {
-    const items = await prisma.announcement.findMany({ orderBy: { publishedAt: 'desc' } })
-    res.json({ items })
-  } catch (error) {
-    next(error)
-  }
-})
-
-adminRouter.get('/dictionaries', async (_req, res, next) => {
-  try {
-    const items = await prisma.dictionaryCategory.findMany({
-      include: { items: { orderBy: { sortOrder: 'asc' } } },
-      orderBy: { createdAt: 'asc' },
     })
     res.json({ items })
   } catch (error) {

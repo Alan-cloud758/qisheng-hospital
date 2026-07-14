@@ -1,9 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import AdminResourcePage from '../pages/AdminResourcePage.vue'
 import CashierWorkbenchPage from '../pages/CashierWorkbenchPage.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
-import DepartmentsPage from '../pages/DepartmentsPage.vue'
 import DoctorWorkbenchPage from '../pages/DoctorWorkbenchPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import ModuleListPage from '../pages/ModuleListPage.vue'
@@ -25,6 +25,21 @@ const modulePage = (
   props: { eyebrow, title, subtitle, resource, columns },
 })
 
+const adminResourcePage = (
+  path: string,
+  title: string,
+  subtitle: string,
+  resource: string,
+  columns: Array<{ key: string; label: string }>,
+  fields: Array<{ key: string; label: string; required?: boolean; type?: 'text' | 'number' | 'textarea' }>,
+  toggleable = true,
+  eyebrow = 'Master Data',
+) => ({
+  path,
+  component: AdminResourcePage,
+  props: { eyebrow, title, subtitle, resource, columns, fields, toggleable },
+})
+
 export const routes: RouteRecordRaw[] = [
   { path: '/login', component: LoginPage },
   {
@@ -33,41 +48,85 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       { path: '', component: DashboardPage },
-      modulePage('accounts', '账号管理', '查看员工、医生和患者账号及角色绑定。', 'accounts', [
+      adminResourcePage('accounts', '账号管理', '维护员工、医生和患者账号基础信息。', 'accounts', [
         { key: 'username', label: '账号' },
         { key: 'displayName', label: '姓名' },
         { key: 'status', label: '状态' },
         { key: 'roles', label: '角色数' },
+      ], [
+        { key: 'username', label: '账号', required: true },
+        { key: 'displayName', label: '姓名', required: true },
+        { key: 'phone', label: '电话' },
+        { key: 'email', label: '邮箱' },
+        { key: 'password', label: '初始密码' },
+        { key: 'status', label: '状态' },
       ]),
-      modulePage('roles', '角色权限', '查看系统角色和权限配置。', 'roles', [
+      adminResourcePage('roles', '角色权限', '维护系统角色基础配置。', 'roles', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },
         { key: 'description', label: '说明' },
         { key: 'permissions', label: '权限数' },
-      ]),
-      modulePage('menus', '菜单配置', '查看后台导航菜单。', 'menus', [
+      ], [
+        { key: 'code', label: '编码', required: true },
+        { key: 'name', label: '名称', required: true },
+        { key: 'description', label: '说明' },
+      ], false),
+      adminResourcePage('menus', '菜单配置', '维护后台导航菜单。', 'menus', [
         { key: 'title', label: '菜单' },
         { key: 'path', label: '路径' },
         { key: 'sortOrder', label: '排序' },
+      ], [
+        { key: 'code', label: '编码', required: true },
+        { key: 'title', label: '菜单', required: true },
+        { key: 'path', label: '路径', required: true },
+        { key: 'icon', label: '图标' },
+        { key: 'sortOrder', label: '排序', type: 'number' },
       ]),
-      { path: 'departments', component: DepartmentsPage },
-      modulePage('campuses', '院区管理', '查看院区、地址和诊室覆盖。', 'campuses', [
+      adminResourcePage('departments', '科室管理', '维护科室基础信息和排序。', 'departments', [
+        { key: 'name', label: '科室' },
+        { key: 'code', label: '编码' },
+        { key: 'campus.name', label: '院区' },
+        { key: 'sortOrder', label: '排序' },
+      ], [
+        { key: 'campusId', label: '院区ID', required: true },
+        { key: 'name', label: '科室', required: true },
+        { key: 'code', label: '编码', required: true },
+        { key: 'summary', label: '简介', type: 'textarea' },
+        { key: 'sortOrder', label: '排序', type: 'number' },
+      ]),
+      adminResourcePage('campuses', '院区管理', '维护院区、地址和诊室覆盖。', 'campuses', [
         { key: 'name', label: '院区' },
         { key: 'address', label: '地址' },
         { key: 'phone', label: '电话' },
         { key: 'departments', label: '科室数' },
+      ], [
+        { key: 'name', label: '院区', required: true },
+        { key: 'address', label: '地址', required: true },
+        { key: 'phone', label: '电话' },
       ]),
-      modulePage('clinic-rooms', '诊室管理', '查看诊室所在院区、楼层和科室。', 'clinic-rooms', [
+      adminResourcePage('clinic-rooms', '诊室管理', '维护诊室所在院区、楼层和科室。', 'clinic-rooms', [
         { key: 'name', label: '诊室' },
         { key: 'department.name', label: '科室' },
         { key: 'campus.name', label: '院区' },
         { key: 'floor', label: '楼层' },
+      ], [
+        { key: 'campusId', label: '院区ID', required: true },
+        { key: 'departmentId', label: '科室ID', required: true },
+        { key: 'name', label: '诊室', required: true },
+        { key: 'floor', label: '楼层' },
       ]),
-      modulePage('doctors', '医生档案', '查看医生职称、科室、专长和挂号费。', 'doctors', [
+      adminResourcePage('doctors', '医生档案', '维护医生职称、科室、专长和挂号费。', 'doctors', [
         { key: 'user.displayName', label: '医生' },
         { key: 'department.name', label: '科室' },
         { key: 'title', label: '职称' },
         { key: 'specialty', label: '专长' },
+      ], [
+        { key: 'userId', label: '用户ID', required: true },
+        { key: 'departmentId', label: '科室ID', required: true },
+        { key: 'employeeNo', label: '工号', required: true },
+        { key: 'title', label: '职称', required: true },
+        { key: 'specialty', label: '专长', required: true },
+        { key: 'consultationFee', label: '挂号费', type: 'number' },
       ]),
       modulePage('patients', '患者中心', '查看患者档案和就诊人绑定。', 'patients', [
         { key: 'patientNo', label: '患者号' },
@@ -103,17 +162,27 @@ export const routes: RouteRecordRaw[] = [
         { key: 'amount', label: '金额' },
         { key: 'status', label: '状态' },
       ]),
-      modulePage('fee-items', '费用项目', '查看门诊收费项目配置。', 'fee-items', [
+      adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },
         { key: 'amount', label: '金额' },
+      ], [
+        { key: 'code', label: '编码', required: true },
+        { key: 'name', label: '名称', required: true },
+        { key: 'amount', label: '金额', required: true, type: 'number' },
       ]),
       { path: 'pharmacy', component: PharmacyWorkbenchPage },
-      modulePage('drugs', '药品目录', '查看药品规格、单位和价格。', 'drugs', [
+      adminResourcePage('drugs', '药品目录', '维护药品规格、单位和价格。', 'drugs', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '药品' },
         { key: 'spec', label: '规格' },
         { key: 'price', label: '价格' },
+      ], [
+        { key: 'code', label: '编码', required: true },
+        { key: 'name', label: '药品', required: true },
+        { key: 'spec', label: '规格', required: true },
+        { key: 'unit', label: '单位', required: true },
+        { key: 'price', label: '价格', required: true, type: 'number' },
       ]),
       modulePage('prescriptions', '处方列表', '查看处方状态和药品明细。', 'prescriptions', [
         { key: 'doctor.user.displayName', label: '医生' },
@@ -121,16 +190,35 @@ export const routes: RouteRecordRaw[] = [
         { key: 'items', label: '药品数' },
         { key: 'note', label: '备注' },
       ]),
-      modulePage('announcements', '公告配置', '查看患者端公告。', 'announcements', [
+      adminResourcePage('announcements', '公告配置', '维护患者端公告。', 'announcements', [
         { key: 'title', label: '标题' },
         { key: 'content', label: '内容' },
         { key: 'publishedAt', label: '发布时间' },
+      ], [
+        { key: 'title', label: '标题', required: true },
+        { key: 'content', label: '内容', required: true, type: 'textarea' },
+        { key: 'publishedAt', label: '发布时间' },
       ]),
-      modulePage('dictionaries', '数据字典', '查看运营字典分类和条目。', 'dictionaries', [
+      adminResourcePage('dictionaries', '数据字典', '维护运营字典分类。', 'dictionaries', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },
         { key: 'description', label: '说明' },
         { key: 'items', label: '条目数' },
+      ], [
+        { key: 'code', label: '编码', required: true },
+        { key: 'name', label: '名称', required: true },
+        { key: 'description', label: '说明' },
+      ], false),
+      adminResourcePage('dictionary-items', '字典条目', '维护运营字典条目。', 'dictionary-items', [
+        { key: 'category.name', label: '分类' },
+        { key: 'code', label: '编码' },
+        { key: 'label', label: '名称' },
+        { key: 'sortOrder', label: '排序' },
+      ], [
+        { key: 'categoryId', label: '分类ID', required: true },
+        { key: 'code', label: '编码', required: true },
+        { key: 'label', label: '名称', required: true },
+        { key: 'sortOrder', label: '排序', type: 'number' },
       ]),
       modulePage('audit', '审计日志', '查看登录、支付、挂号、处方等操作记录。', 'audit-logs', [
         { key: 'action', label: '动作' },
