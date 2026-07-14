@@ -160,3 +160,38 @@ export async function dispensePrescription(id: string) {
   const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/dispense`)
   return response.data.item
 }
+
+export async function returnPrescription(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/prescriptions/${id}/return`)
+  return response.data.item
+}
+
+export async function fetchDrugStockBatches() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/pharmacy/stock-batches')
+  return response.data.items
+}
+
+export async function receiveDrugStock(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/staff/pharmacy/stock-batches', data)
+  return response.data.item
+}
+
+export async function adjustDrugStock(id: string, data: { quantity: number; reason: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/stock-batches/${id}/adjust`, data)
+  return response.data.item
+}
+
+export async function damageDrugStock(id: string, data: { quantity: number; reason: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/pharmacy/stock-batches/${id}/damage`, data)
+  return response.data.item
+}
+
+export async function fetchDrugStockMovements() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/pharmacy/stock-movements')
+  return response.data.items
+}
+
+export async function fetchDrugStockAlerts() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/pharmacy/stock-alerts')
+  return response.data.items
+}

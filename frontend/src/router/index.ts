@@ -5,6 +5,8 @@ import AdminResourcePage from '../pages/AdminResourcePage.vue'
 import CashierWorkbenchPage from '../pages/CashierWorkbenchPage.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
 import DoctorWorkbenchPage from '../pages/DoctorWorkbenchPage.vue'
+import DrugStockMovementsPage from '../pages/DrugStockMovementsPage.vue'
+import DrugStockPage from '../pages/DrugStockPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import ModuleListPage from '../pages/ModuleListPage.vue'
 import PaymentHistoryPage from '../pages/PaymentHistoryPage.vue'
@@ -32,7 +34,7 @@ const adminResourcePage = (
   subtitle: string,
   resource: string,
   columns: Array<{ key: string; label: string }>,
-  fields: Array<{ key: string; label: string; required?: boolean; type?: 'text' | 'number' | 'textarea' }>,
+  fields: Array<{ key: string; label: string; required?: boolean; type?: 'text' | 'number' | 'textarea' | 'boolean' }>,
   toggleable = true,
   eyebrow = 'Master Data',
 ) => ({
@@ -168,17 +170,22 @@ export const routes: RouteRecordRaw[] = [
         { key: 'amount', label: '金额', required: true, type: 'number' },
       ]),
       { path: 'pharmacy', component: PharmacyWorkbenchPage },
+      { path: 'drug-stock', component: DrugStockPage },
+      { path: 'drug-stock-movements', component: DrugStockMovementsPage },
       adminResourcePage('drugs', '药品目录', '维护药品规格、单位和价格。', 'drugs', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '药品' },
         { key: 'spec', label: '规格' },
         { key: 'price', label: '价格' },
+        { key: 'minStock', label: '最低库存' },
       ], [
         { key: 'code', label: '编码', required: true },
         { key: 'name', label: '药品', required: true },
         { key: 'spec', label: '规格', required: true },
         { key: 'unit', label: '单位', required: true },
         { key: 'price', label: '价格', required: true, type: 'number' },
+        { key: 'minStock', label: '最低库存', type: 'number' },
+        { key: 'requiresBatch', label: '批次管理', type: 'boolean' },
       ]),
       modulePage('prescriptions', '处方列表', '查看处方状态和药品明细。', 'prescriptions', [
         { key: 'doctor.user.displayName', label: '医生' },

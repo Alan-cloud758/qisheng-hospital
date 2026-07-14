@@ -6,6 +6,7 @@ import { auth, requireRole } from '../middleware/auth'
 import type { AdminDelegate, AdminResourceConfig } from '../services/admin-crud'
 import { hashAccountPassword, registerAdminResourceRoutes } from '../services/admin-crud'
 import { assertCanCheckInRegistration } from '../services/outpatient-state'
+import { listStockAlerts } from '../services/pharmacy-inventory'
 import { generateSchedulesFromTemplate, markNoShow, suspendSchedule } from '../services/scheduling'
 
 export const adminRouter = Router()
@@ -102,7 +103,7 @@ const adminResources: Record<string, AdminResourceConfig> = {
   drugs: {
     delegate: prisma.drugCatalog as unknown as AdminDelegate,
     searchableFields: ['code', 'name', 'spec'],
-    writableFields: ['code', 'name', 'spec', 'unit', 'price', 'isActive'],
+    writableFields: ['code', 'name', 'spec', 'unit', 'price', 'minStock', 'requiresBatch', 'isActive'],
     orderBy: { code: 'asc' },
     activeField: 'isActive',
   },
@@ -491,6 +492,46 @@ adminRouter.get('/prescriptions', async (_req, res, next) => {
       orderBy: { createdAt: 'desc' },
       take: 200,
     })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/stock-batches', async (_req, res, next) => {
+  try {
+    const items = await prisma.drugStockBatch.findMany({
+      include: { drug: true },
+      orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
+      take: 300,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/stock-movements', async (_req, res, next) => {
+  try {
+    const items = await prisma.drugStockMovement.findMany({
+      include: {
+        drug: true,
+        batch: true,
+        prescription: true,
+        operator: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/stock-alerts', async (_req, res, next) => {
+  try {
+    const items = await listStockAlerts()
     res.json({ items })
   } catch (error) {
     next(error)

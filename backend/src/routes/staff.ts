@@ -5,11 +5,18 @@ import { prisma } from '../lib/prisma'
 import { auth, requireRole } from '../middleware/auth'
 import {
   assertCanCompleteEncounter,
-  assertCanDispensePrescription,
   assertCanReviewPrescription,
   assertCanStartEncounter,
 } from '../services/outpatient-state'
 import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
+import {
+  adjustStock,
+  damageStock,
+  dispensePrescriptionWithStock,
+  listStockAlerts,
+  receiveStock,
+  returnDispensedPrescription,
+} from '../services/pharmacy-inventory'
 
 export const staffRouter = Router()
 
@@ -43,6 +50,26 @@ const prescriptionSchema = z.object({
       }),
     )
     .default([]),
+})
+
+const receiveStockSchema = z.object({
+  drugId: z.string().min(1),
+  batchNo: z.string().min(1),
+  quantity: z.coerce.number().int().positive(),
+  expiresAt: z.coerce.date(),
+  unitCost: z.coerce.number().nonnegative().optional(),
+  supplier: z.string().optional(),
+  reason: z.string().optional(),
+})
+
+const adjustStockSchema = z.object({
+  quantity: z.coerce.number().int().min(0),
+  reason: z.string().min(1),
+})
+
+const damageStockSchema = z.object({
+  quantity: z.coerce.number().int().positive(),
+  reason: z.string().min(1),
 })
 
 function routeId(value: string | string[] | undefined) {
@@ -338,7 +365,7 @@ staffRouter.get('/pharmacy/prescriptions', requireRole('PHARMACY', 'ADMIN'), asy
       include: {
         doctor: { include: { user: true, department: true } },
         encounter: { include: { registration: { include: { visitMember: true } } } },
-        items: { include: { drug: true } },
+        items: { include: { drug: { include: { stockBatches: { where: { isActive: true, quantity: { gt: 0 } }, orderBy: { expiresAt: 'asc' } } } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -361,7 +388,7 @@ staffRouter.post('/pharmacy/prescriptions/:id/review', requireRole('PHARMACY', '
     const item = await prisma.prescription.update({
       where: { id: prescription.id },
       data: { status: PrescriptionStatus.REVIEWED },
-      include: { items: { include: { drug: true } } },
+      include: { items: { include: { drug: { include: { stockBatches: { where: { isActive: true, quantity: { gt: 0 } }, orderBy: { expiresAt: 'asc' } } } } } } },
     })
     res.json({ item })
   } catch (error) {
@@ -375,23 +402,108 @@ staffRouter.post('/pharmacy/prescriptions/:id/review', requireRole('PHARMACY', '
 
 staffRouter.post('/pharmacy/prescriptions/:id/dispense', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
   try {
-    const prescription = await prisma.prescription.findUnique({ where: { id: routeId(req.params.id) } })
-    if (!prescription) {
-      res.status(404).json({ message: '处方不存在' })
-      return
-    }
-    assertCanDispensePrescription(prescription.status)
-    const item = await prisma.prescription.update({
-      where: { id: prescription.id },
-      data: { status: PrescriptionStatus.DISPENSED },
-      include: { items: { include: { drug: true } } },
-    })
+    const item = await dispensePrescriptionWithStock(routeId(req.params.id), req.user?.id)
     res.json({ item })
   } catch (error) {
     if (error instanceof Error) {
       res.status(400).json({ message: error.message })
       return
     }
+    next(error)
+  }
+})
+
+staffRouter.post('/pharmacy/prescriptions/:id/return', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await returnDispensedPrescription(routeId(req.params.id), req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.get('/pharmacy/stock-batches', requireRole('PHARMACY', 'ADMIN'), async (_req, res, next) => {
+  try {
+    const items = await prisma.drugStockBatch.findMany({
+      include: { drug: true },
+      orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
+      take: 300,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+staffRouter.post('/pharmacy/stock-batches', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = receiveStockSchema.parse(req.body)
+    const item = await receiveStock({ ...input, operatorId: req.user?.id })
+    res.status(201).json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/pharmacy/stock-batches/:id/adjust', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = adjustStockSchema.parse(req.body)
+    const item = await adjustStock(routeId(req.params.id), { ...input, operatorId: req.user?.id })
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/pharmacy/stock-batches/:id/damage', requireRole('PHARMACY', 'ADMIN'), async (req, res, next) => {
+  try {
+    const input = damageStockSchema.parse(req.body)
+    const item = await damageStock(routeId(req.params.id), { ...input, operatorId: req.user?.id })
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.get('/pharmacy/stock-movements', requireRole('PHARMACY', 'ADMIN'), async (_req, res, next) => {
+  try {
+    const items = await prisma.drugStockMovement.findMany({
+      include: {
+        drug: true,
+        batch: true,
+        prescription: true,
+        operator: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+staffRouter.get('/pharmacy/stock-alerts', requireRole('PHARMACY', 'ADMIN'), async (_req, res, next) => {
+  try {
+    const items = await listStockAlerts()
+    res.json({ items })
+  } catch (error) {
     next(error)
   }
 })

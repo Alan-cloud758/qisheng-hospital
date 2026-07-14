@@ -42,6 +42,8 @@ const navItems = [
   { path: '/cashier', label: '收费工作台' },
   { path: '/pharmacy', label: '药房工作台' },
   { path: '/drugs', label: '药品目录' },
+  { path: '/drug-stock', label: '药品库存' },
+  { path: '/drug-stock-movements', label: '库存流水' },
   { path: '/announcements', label: '公告配置' },
   { path: '/dictionaries', label: '数据字典' },
   { path: '/audit', label: '审计日志' },

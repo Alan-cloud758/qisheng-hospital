@@ -26,6 +26,11 @@ function mountPage() {
         'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' },
         'el-input': { props: ['modelValue'], emits: ['update:modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
         'el-input-number': { template: '<input />' },
+        'el-switch': {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+        },
         'el-table': { template: '<div><slot /></div>' },
         'el-table-column': { template: '<div />' },
         'el-pagination': { template: '<div />' },
@@ -70,5 +75,43 @@ describe('AdminResourcePage', () => {
     await wrapper.findAll('button').find((button) => button.text() === '保存')?.trigger('click')
 
     expect(createAdminResource).toHaveBeenCalledWith('departments', expect.objectContaining({ name: '测试科室' }))
+  })
+
+  it('submits boolean field values from switch controls', async () => {
+    const wrapper = mount(AdminResourcePage, {
+      props: {
+        title: '药品目录',
+        resource: 'drugs',
+        columns: [{ key: 'name', label: '名称' }],
+        fields: [{ key: 'requiresBatch', label: '批次管理', type: 'boolean' }],
+      },
+      global: {
+        directives: {
+          loading: {},
+        },
+        stubs: {
+          'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' },
+          'el-input': { props: ['modelValue'], emits: ['update:modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
+          'el-input-number': { template: '<input />' },
+          'el-switch': {
+            props: ['modelValue'],
+            emits: ['update:modelValue'],
+            template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+          },
+          'el-table': { template: '<div><slot /></div>' },
+          'el-table-column': { template: '<div />' },
+          'el-pagination': { template: '<div />' },
+          'el-dialog': { template: '<div><slot /><slot name="footer" /></div>' },
+          'el-form': { template: '<form><slot /></form>' },
+          'el-form-item': { template: '<label><slot /></label>' },
+        },
+      },
+    })
+
+    await wrapper.findAll('button').find((button) => button.text() === '新增')?.trigger('click')
+    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await wrapper.findAll('button').find((button) => button.text() === '保存')?.trigger('click')
+
+    expect(createAdminResource).toHaveBeenCalledWith('drugs', expect.objectContaining({ requiresBatch: true }))
   })
 })

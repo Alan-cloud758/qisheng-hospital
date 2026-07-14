@@ -71,6 +71,14 @@ enum AuditAction {
   CANCEL
 }
 
+enum DrugStockMovementType {
+  RECEIVE
+  ADJUST
+  DAMAGE
+  DISPENSE
+  RETURN
+}
+
 model User {
   id             String          @id @default(cuid())
   username       String          @unique @db.VarChar(64)
@@ -92,6 +100,7 @@ model User {
   registrationChangeLogs RegistrationChangeLog[]
   lockedSlots    AppointmentSlot[] @relation("SlotLockOwner")
   requestedRefunds RefundOrder[]
+  drugStockMovements DrugStockMovement[]
 }
 
 model Role {
@@ -526,10 +535,73 @@ model DrugCatalog {
   spec        String             @db.VarChar(120)
   unit        String             @db.VarChar(40)
   price       Decimal            @db.Decimal(10, 2)
+  minStock    Int                @default(0)
+  requiresBatch Boolean          @default(true)
   isActive    Boolean            @default(true)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   items       PrescriptionItem[]
+  stockBatches DrugStockBatch[]
+  stockMovements DrugStockMovement[]
+  stockAlerts DrugStockAlert[]
+}
+
+model DrugStockBatch {
+  id          String              @id @default(cuid())
+  drugId      String
+  batchNo     String              @db.VarChar(80)
+  quantity    Int                 @default(0)
+  expiresAt   DateTime
+  receivedAt  DateTime            @default(now())
+  unitCost    Decimal?            @db.Decimal(10, 2)
+  supplier    String?             @db.VarChar(160)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  drug        DrugCatalog         @relation(fields: [drugId], references: [id], onDelete: Cascade)
+  movements   DrugStockMovement[]
+  alerts      DrugStockAlert[]
+
+  @@unique([drugId, batchNo])
+  @@index([drugId, expiresAt])
+}
+
+model DrugStockMovement {
+  id             String                 @id @default(cuid())
+  batchId        String
+  drugId         String
+  prescriptionId String?
+  type           DrugStockMovementType
+  quantity       Int
+  beforeQuantity Int
+  afterQuantity  Int
+  reason         String?                @db.VarChar(500)
+  operatorId     String?
+  createdAt      DateTime               @default(now())
+  batch          DrugStockBatch         @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  drug           DrugCatalog            @relation(fields: [drugId], references: [id], onDelete: Restrict)
+  prescription   Prescription?          @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  operator       User?                  @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+
+  @@index([drugId, createdAt])
+  @@index([prescriptionId])
+}
+
+model DrugStockAlert {
+  id          String       @id @default(cuid())
+  drugId      String
+  batchId     String?
+  type        String       @db.VarChar(40)
+  level       String       @default("WARNING") @db.VarChar(40)
+  message     String       @db.VarChar(500)
+  isResolved  Boolean      @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  drug        DrugCatalog  @relation(fields: [drugId], references: [id], onDelete: Cascade)
+  batch       DrugStockBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([drugId, isResolved])
 }
 
 model Prescription {
@@ -543,6 +615,7 @@ model Prescription {
   encounter   Encounter?         @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   doctor      DoctorProfile      @relation(fields: [doctorId], references: [id])
   items       PrescriptionItem[]
+  stockMovements DrugStockMovement[]
 }
 
 model PrescriptionItem {

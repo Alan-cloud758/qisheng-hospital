@@ -14,4 +14,12 @@ describe('admin routes', () => {
     expect(childPaths).toContain('audit')
     expect(childPaths).toContain('dictionaries')
   })
+
+  it('uses a boolean control for drug batch management', () => {
+    const shell = routes.find((route) => route.path === '/')
+    const drugsRoute = shell?.children?.find((route) => route.path === 'drugs')
+    const fields = drugsRoute?.props && typeof drugsRoute.props === 'object' && 'fields' in drugsRoute.props ? drugsRoute.props.fields : []
+
+    expect(fields).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'requiresBatch', type: 'boolean' })]))
+  })
 })

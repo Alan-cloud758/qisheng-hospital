@@ -55,6 +55,7 @@
             :autosize="{ minRows: 3, maxRows: 6 }"
           />
           <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" :min="0" />
+          <el-switch v-else-if="field.type === 'boolean'" v-model="form[field.key]" />
           <el-input v-else v-model="form[field.key]" />
         </el-form-item>
       </el-form>
@@ -70,7 +71,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { createAdminResource, fetchAdminResource, toggleAdminResource, updateAdminResource } from '../api/hospital'
 
-export type FieldConfig = { key: string; label: string; required?: boolean; type?: 'text' | 'number' | 'textarea' }
+export type FieldConfig = { key: string; label: string; required?: boolean; type?: 'text' | 'number' | 'textarea' | 'boolean' }
 export type ColumnConfig = { key: string; label: string }
 
 const props = withDefaults(
@@ -125,7 +126,7 @@ function resetForm(row?: Record<string, unknown>) {
   }
 
   for (const field of props.fields) {
-    form[field.key] = row ? valueAt(row, field.key) : ''
+    form[field.key] = row ? valueAt(row, field.key) : field.type === 'boolean' ? true : ''
   }
 }
 
