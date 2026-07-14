@@ -47,6 +47,25 @@ function normalizeInsuranceMapping(data: Record<string, unknown>) {
   return next
 }
 
+function normalizeOptionalDecimal(value: unknown) {
+  if (value === undefined || value === null || value === '') return undefined
+  const number = Number(value)
+  return Number.isFinite(number) ? number : undefined
+}
+
+function normalizeLabItem(data: Record<string, unknown>) {
+  const next = { ...data }
+  next.referenceLow = normalizeOptionalDecimal(next.referenceLow)
+  next.referenceHigh = normalizeOptionalDecimal(next.referenceHigh)
+  const price = normalizeOptionalDecimal(next.price)
+  if (price === undefined) {
+    delete next.price
+  } else {
+    next.price = price
+  }
+  return next
+}
+
 const adminResources: Record<string, AdminResourceConfig> = {
   accounts: {
     delegate: prisma.user as unknown as AdminDelegate,
@@ -173,6 +192,14 @@ const adminResources: Record<string, AdminResourceConfig> = {
     orderBy: { feeItemCode: 'asc' },
     activeField: 'isActive',
     beforeWrite: normalizeInsuranceMapping,
+  },
+  'lab-items': {
+    delegate: prisma.labTestItem as unknown as AdminDelegate,
+    searchableFields: ['code', 'name', 'specimenType'],
+    writableFields: ['code', 'name', 'specimenType', 'unit', 'referenceLow', 'referenceHigh', 'price', 'isActive'],
+    orderBy: { code: 'asc' },
+    activeField: 'isActive',
+    beforeWrite: normalizeLabItem,
   },
   announcements: {
     delegate: prisma.announcement as unknown as AdminDelegate,

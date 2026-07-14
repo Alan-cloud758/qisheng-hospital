@@ -91,6 +91,16 @@
         </div>
 
         <div>
+          <h3>检验申请</h3>
+          <div class="template-row">
+            <el-select v-model="templateForm.labItemIds" multiple filterable placeholder="选择检验项目">
+              <el-option v-for="item in labItems" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <el-button type="primary" @click="createLabRequest">开检验</el-button>
+          </div>
+        </div>
+
+        <div>
           <h3>处方模板</h3>
           <div class="template-row">
             <el-select v-model="templateForm.prescriptionTemplateId" filterable placeholder="选择处方模板">
@@ -126,8 +136,10 @@ import {
   completeEncounter,
   createEncounterDiagnosis,
   createEncounterOrder,
+  createEncounterLabRequest,
   createPrescriptionFromTemplate,
   fetchDoctorClinicalTemplates,
+  fetchDoctorLabItems,
   fetchDoctorQueue,
   fetchDoctorQueueTickets,
   resubmitPrescription,
@@ -143,6 +155,11 @@ interface TemplateRow {
   note?: string
   type?: string
   content?: string
+}
+
+interface LabItemRow {
+  id: string
+  name: string
 }
 
 interface PrescriptionRow {
@@ -171,6 +188,7 @@ interface QueueTicketRow {
 const loading = ref(false)
 const rows = ref<DoctorQueueRow[]>([])
 const queueTickets = ref<QueueTicketRow[]>([])
+const labItems = ref<LabItemRow[]>([])
 const templateVisible = ref(false)
 const selectedEncounter = ref<DoctorQueueRow['encounter'] | null>(null)
 const selectedEncounterId = ref('')
@@ -184,15 +202,17 @@ const templateForm = reactive({
   recordTemplateId: '',
   diagnosisId: '',
   orderId: '',
+  labItemIds: [] as string[],
   prescriptionTemplateId: '',
 })
 
 async function load() {
   loading.value = true
   try {
-    const [queue, tickets, templates] = await Promise.all([fetchDoctorQueue(), fetchDoctorQueueTickets(), fetchDoctorClinicalTemplates()])
+    const [queue, tickets, templates, lab] = await Promise.all([fetchDoctorQueue(), fetchDoctorQueueTickets(), fetchDoctorClinicalTemplates(), fetchDoctorLabItems()])
     rows.value = queue as DoctorQueueRow[]
     queueTickets.value = tickets as QueueTicketRow[]
+    labItems.value = lab as LabItemRow[]
     templateData.recordTemplates = templates.recordTemplates as TemplateRow[]
     templateData.diagnoses = templates.diagnoses as TemplateRow[]
     templateData.orders = templates.orders as TemplateRow[]
@@ -263,6 +283,13 @@ async function addOrder() {
   const item = selectedOrder()
   if (!item) return
   await createEncounterOrder(selectedEncounter.value.id, { type: item.type, content: item.content })
+  await load()
+}
+
+async function createLabRequest() {
+  if (!selectedEncounter.value || templateForm.labItemIds.length === 0) return
+  await createEncounterLabRequest(selectedEncounter.value.id, { itemIds: templateForm.labItemIds })
+  templateForm.labItemIds = []
   await load()
 }
 

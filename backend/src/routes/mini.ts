@@ -9,6 +9,7 @@ import { lockSlot, rescheduleRegistration } from '../services/scheduling'
 import { mockPayOrder } from '../services/payment'
 import { createAppointmentNotification, favoriteDoctor, unfavoriteDoctor } from '../services/queue'
 import { insuranceForOrder } from '../services/insurance'
+import { getPublishedReportsForPatient } from '../services/lab'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -455,6 +456,15 @@ miniRouter.get('/fees/:id/insurance', async (req, res, next) => {
       res.status(404).json({ message: error.message })
       return
     }
+    next(error)
+  }
+})
+
+miniRouter.get('/lab-reports', async (req, res, next) => {
+  try {
+    const items = await getPublishedReportsForPatient(req.user!.id)
+    res.json({ items })
+  } catch (error) {
     next(error)
   }
 })

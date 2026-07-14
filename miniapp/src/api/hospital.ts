@@ -114,6 +114,23 @@ export interface InpatientAdmission {
   dischargeRequests?: Array<{ id: string; status: string; reason: string }>
 }
 
+export interface LabReport {
+  id: string
+  status: string
+  summary?: string | null
+  publishedAt?: string | null
+  request?: {
+    requestNo: string
+    source: string
+    items?: Array<{ item?: { name?: string } }>
+  }
+  results?: Array<{
+    resultValue: string
+    abnormalFlag: string
+    item?: { name?: string; unit?: string }
+  }>
+}
+
 export function loginPatient(username = 'patient_demo', password = 'Qisheng@123') {
   return request<{ token: string; user: unknown }>('/auth/login', {
     method: 'POST',
@@ -207,4 +224,8 @@ export function fetchFeeInsurance(id: string) {
 
 export function fetchInpatientAdmissions() {
   return request<{ items: InpatientAdmission[] }>('/mini/inpatient')
+}
+
+export function fetchLabReports() {
+  return request<{ items: LabReport[] }>('/mini/lab-reports')
 }

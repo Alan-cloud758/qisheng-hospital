@@ -48,6 +48,8 @@ const navItems = [
   { path: '/insurance-mappings', label: '医保目录' },
   { path: '/insurance-settlements', label: '医保结算' },
   { path: '/insurance-logs', label: '医保日志' },
+  { path: '/lab-items', label: '检验项目' },
+  { path: '/lab', label: '检验工作台' },
   { path: '/pharmacy', label: '药房工作台' },
   { path: '/drugs', label: '药品目录' },
   { path: '/drug-stock', label: '药品库存' },

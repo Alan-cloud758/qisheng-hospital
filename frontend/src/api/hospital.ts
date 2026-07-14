@@ -197,6 +197,56 @@ export async function resubmitPrescription(id: string) {
   return response.data.item
 }
 
+export async function fetchDoctorLabItems() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/lab-items')
+  return response.data.items
+}
+
+export async function createEncounterLabRequest(encounterId: string, data: { itemIds: string[]; clinicalNote?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/encounters/${encounterId}/lab-requests`, data)
+  return response.data.item
+}
+
+export async function createInpatientLabRequest(admissionId: string, data: { itemIds: string[]; clinicalNote?: string; doctorId?: string }) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/doctor/inpatients/${admissionId}/lab-requests`, data)
+  return response.data.item
+}
+
+export async function fetchLabRequests() {
+  const response = await apiClient.get<{ items: unknown[] }>('/staff/lab/requests')
+  return response.data.items
+}
+
+export async function collectLabSample(requestId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/requests/${requestId}/collect`, {})
+  return response.data.item
+}
+
+export async function receiveLabSample(sampleId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/samples/${sampleId}/receive`, {})
+  return response.data.item
+}
+
+export async function rejectLabSample(sampleId: string, reason: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/samples/${sampleId}/reject`, { reason })
+  return response.data.item
+}
+
+export async function recordLabResults(reportId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/reports/${reportId}/results`, data)
+  return response.data.item
+}
+
+export async function reviewLabReport(reportId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/reports/${reportId}/review`, {})
+  return response.data.item
+}
+
+export async function publishLabReport(reportId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/lab/reports/${reportId}/publish`, {})
+  return response.data.item
+}
+
 export async function fetchPaymentOrders() {
   const response = await apiClient.get<{ items: unknown[] }>('/staff/cashier/payment-orders')
   return response.data.items
