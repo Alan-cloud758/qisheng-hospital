@@ -25,6 +25,7 @@ onMounted(() => {
       <text>{{ item.title }}</text>
       <text class="muted">订单号：{{ item.orderNo }}</text>
       <text>金额：¥{{ money(item.amount) }}</text>
+      <text v-if="item.insurance" class="insurance">医保支付：¥{{ money(item.insurance.insuranceAmount) }}｜自费：¥{{ money(item.insurance.selfPayAmount) }}</text>
       <text class="status">{{ item.status }}</text>
       <text class="muted">交易 {{ item.transactions?.length || 0 }} 笔｜退款 {{ item.refundOrders?.length || 0 }} 笔</text>
     </view>
@@ -46,5 +47,10 @@ onMounted(() => {
 .status {
   color: #126c5b;
   font-weight: 700;
+}
+
+.insurance {
+  color: #1f7a68;
+  font-weight: 600;
 }
 </style>

@@ -86,6 +86,16 @@ export interface FeeOrder {
   status: string
   transactions?: unknown[]
   refundOrders?: unknown[]
+  insurance?: InsuranceSettlement | null
+}
+
+export interface InsuranceSettlement {
+  id: string
+  settlementNo: string
+  status: string
+  insuranceAmount: string | number
+  selfPayAmount: string | number
+  items?: Array<{ itemName: string; category: string; insuranceAmount: string | number; selfPayAmount: string | number }>
 }
 
 export interface InpatientAdmission {
@@ -189,6 +199,10 @@ export function requestFollowUp(id: string) {
 
 export function fetchFees() {
   return request<{ items: FeeOrder[] }>('/mini/fees')
+}
+
+export function fetchFeeInsurance(id: string) {
+  return request<{ item: InsuranceSettlement | null }>('/mini/fees/' + id + '/insurance')
 }
 
 export function fetchInpatientAdmissions() {

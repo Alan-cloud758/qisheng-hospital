@@ -17,6 +17,7 @@ import {
   assertCanStartEncounter,
 } from '../services/outpatient-state'
 import { createInpatientOrder, requestDischarge } from '../services/inpatient'
+import { preSettleOrder, reverseSettlement, settleOrder } from '../services/insurance'
 import { cancelPaymentOrder, executeRefund, mockPayOrder, requestRefund } from '../services/payment'
 import {
   adjustStock,
@@ -590,7 +591,14 @@ staffRouter.post('/doctor/inpatients/:id/discharge-request', requireRole('DOCTOR
 staffRouter.get('/cashier/payment-orders', requireRole('CASHIER', 'ADMIN'), async (_req, res, next) => {
   try {
     const orders = await prisma.paymentOrder.findMany({
-      include: { user: true, registration: { include: { visitMember: true, department: true } }, items: true, transactions: true, refundOrders: { include: { transactions: true } } },
+      include: {
+        user: true,
+        registration: { include: { visitMember: true, department: true } },
+        items: true,
+        transactions: true,
+        refundOrders: { include: { transactions: true } },
+        insuranceSettlements: { include: { items: true, profile: true }, orderBy: { createdAt: 'desc' } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     })
@@ -618,6 +626,45 @@ staffRouter.post('/cashier/payment-orders/:id/pay', requireRole('CASHIER', 'ADMI
 staffRouter.post('/cashier/payment-orders/:id/cancel', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
   try {
     const item = await cancelPaymentOrder(routeId(req.params.id), req.user?.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/payment-orders/:id/insurance/pre-settle', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await preSettleOrder(routeId(req.params.id))
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/payment-orders/:id/insurance/settle', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await settleOrder(routeId(req.params.id))
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    next(error)
+  }
+})
+
+staffRouter.post('/cashier/insurance-settlements/:id/reverse', requireRole('CASHIER', 'ADMIN'), async (req, res, next) => {
+  try {
+    const item = await reverseSettlement(routeId(req.params.id))
     res.json({ item })
   } catch (error) {
     if (error instanceof Error) {

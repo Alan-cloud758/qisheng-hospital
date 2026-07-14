@@ -154,7 +154,8 @@ export function registerAdminResourceRoutes(router: Router, resources: Record<st
             ? { status: existing.status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE }
             : { isActive: !existing.isActive }
 
-        const item = await config.delegate.update({ where: { id: req.params.id }, data, ...queryShape(config) })
+        const normalizedData = config.beforeWrite ? config.beforeWrite(data, { ...existing, ...data }, 'update') : data
+        const item = await config.delegate.update({ where: { id: req.params.id }, data: normalizedData, ...queryShape(config) })
 
         await writeAuditLog({
           userId: req.user?.id,

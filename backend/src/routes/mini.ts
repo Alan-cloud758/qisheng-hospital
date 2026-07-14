@@ -8,6 +8,7 @@ import { assertCanCancelRegistration } from '../services/outpatient-state'
 import { lockSlot, rescheduleRegistration } from '../services/scheduling'
 import { mockPayOrder } from '../services/payment'
 import { createAppointmentNotification, favoriteDoctor, unfavoriteDoctor } from '../services/queue'
+import { insuranceForOrder } from '../services/insurance'
 
 const visitMemberSchema = z.object({
   name: z.string().min(1),
@@ -441,6 +442,19 @@ miniRouter.get('/fees', async (req, res, next) => {
 
     res.json({ items })
   } catch (error) {
+    next(error)
+  }
+})
+
+miniRouter.get('/fees/:id/insurance', async (req, res, next) => {
+  try {
+    const item = await insuranceForOrder(req.params.id, req.user!.id)
+    res.json({ item })
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(404).json({ message: error.message })
+      return
+    }
     next(error)
   }
 })

@@ -207,6 +207,31 @@ export async function fetchAdminPaymentOrders() {
   return response.data.items
 }
 
+export async function fetchInsuranceProviderLogs() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/insurance-provider-logs')
+  return response.data.items
+}
+
+export async function fetchInsuranceSettlements() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/insurance-settlements')
+  return response.data.items
+}
+
+export async function preSettleInsurance(orderId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${orderId}/insurance/pre-settle`, {})
+  return response.data.item
+}
+
+export async function settleInsurance(orderId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${orderId}/insurance/settle`, {})
+  return response.data.item
+}
+
+export async function reverseInsuranceSettlement(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/insurance-settlements/${id}/reverse`, {})
+  return response.data.item
+}
+
 export async function payOrder(id: string, payMethod = 'MOCK_CASH') {
   const response = await apiClient.post<{ item: unknown }>(`/staff/cashier/payment-orders/${id}/pay`, { payMethod })
   return response.data.item

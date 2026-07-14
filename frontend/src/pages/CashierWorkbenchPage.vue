@@ -29,10 +29,18 @@
             {{ row.transactions?.length || 0 }} 笔 / 退款 {{ row.refundOrders?.length || 0 }} 笔
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280">
+        <el-table-column label="医保" width="150">
+          <template #default="{ row }">
+            {{ latestInsurance(row)?.status || '未结算' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="460">
           <template #default="{ row }">
             <el-button size="small" @click="openDetail(row)">详情</el-button>
-            <el-button size="small" type="primary" :disabled="row.status !== 'PENDING'" @click="pay(row.id)">模拟收费</el-button>
+            <el-button size="small" :disabled="row.status !== 'PENDING'" @click="insurancePre(row.id)">预结算</el-button>
+            <el-button size="small" type="success" :disabled="row.status !== 'PENDING'" @click="insuranceSettle(row.id)">医保结算</el-button>
+            <el-button size="small" type="danger" :disabled="!canReverseInsurance(row)" @click="insuranceReverse(row)">冲正</el-button>
+            <el-button size="small" type="primary" :disabled="!canPay(row)" @click="pay(row.id)">模拟收费</el-button>
             <el-button size="small" :disabled="row.status !== 'PENDING'" @click="cancel(row.id)">取消</el-button>
             <el-button size="small" type="warning" :disabled="row.status !== 'PAID'" @click="openRefund(row)">退款</el-button>
             <el-button v-if="hasRequestedRefund(row)" size="small" type="danger" @click="execute(firstRequestedRefundId(row))">
@@ -87,6 +95,26 @@
         </div>
 
         <div>
+          <h4>医保拆分</h4>
+          <el-table :data="selectedOrder.insuranceSettlements || []" border>
+            <el-table-column label="结算号" prop="settlementNo" min-width="170" />
+            <el-table-column label="状态" prop="status" width="110" />
+            <el-table-column label="医保支付" prop="insuranceAmount" width="110" />
+            <el-table-column label="自费" prop="selfPayAmount" width="100" />
+          </el-table>
+        </div>
+
+        <div>
+          <h4>医保明细</h4>
+          <el-table :data="latestInsurance(selectedOrder)?.items || []" border>
+            <el-table-column label="项目" prop="itemName" />
+            <el-table-column label="类别" prop="category" width="80" />
+            <el-table-column label="医保支付" prop="insuranceAmount" width="110" />
+            <el-table-column label="自费" prop="selfPayAmount" width="100" />
+          </el-table>
+        </div>
+
+        <div>
           <h4>退款记录</h4>
           <el-table :data="selectedOrder.refundOrders || []" border>
             <el-table-column label="退款号" prop="refundNo" min-width="170" />
@@ -102,7 +130,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { cancelPaymentOrder, executePaymentRefund, fetchPaymentOrders, payOrder, requestPaymentRefund } from '../api/hospital'
+import {
+  cancelPaymentOrder,
+  executePaymentRefund,
+  fetchPaymentOrders,
+  payOrder,
+  preSettleInsurance,
+  requestPaymentRefund,
+  reverseInsuranceSettlement,
+  settleInsurance,
+} from '../api/hospital'
 
 interface PaymentOrderRow {
   id: string
@@ -113,6 +150,14 @@ interface PaymentOrderRow {
   items?: Array<{ itemName?: string; quantity?: number; amount?: string | number }>
   transactions?: Array<{ transactionNo?: string; payMethod?: string; status?: string; amount?: string | number }>
   refundOrders?: Array<{ id: string; refundNo?: string; status: string; amount?: string | number; reason?: string }>
+  insuranceSettlements?: Array<{
+    id: string
+    settlementNo: string
+    status: string
+    insuranceAmount: string | number
+    selfPayAmount: string | number
+    items?: Array<{ itemName: string; category: string; insuranceAmount: string | number; selfPayAmount: string | number }>
+  }>
 }
 
 const loading = ref(false)
@@ -170,8 +215,41 @@ function firstRequestedRefundId(row: PaymentOrderRow) {
   return row.refundOrders?.find((item) => item.status === 'REQUESTED')?.id ?? ''
 }
 
+function latestInsurance(row: PaymentOrderRow | null) {
+  return row?.insuranceSettlements?.[0]
+}
+
+function canReverseInsurance(row: PaymentOrderRow) {
+  return row.status === 'PENDING' && latestInsurance(row)?.status === 'SETTLED'
+}
+
+function hasActivePreSettlement(row: PaymentOrderRow) {
+  return row.insuranceSettlements?.some((item) => item.status === 'PRE_SETTLED') ?? false
+}
+
+function canPay(row: PaymentOrderRow) {
+  return row.status === 'PENDING' && !hasActivePreSettlement(row)
+}
+
 async function execute(id: string) {
   await executePaymentRefund(id)
+  await load()
+}
+
+async function insurancePre(id: string) {
+  await preSettleInsurance(id)
+  await load()
+}
+
+async function insuranceSettle(id: string) {
+  await settleInsurance(id)
+  await load()
+}
+
+async function insuranceReverse(row: PaymentOrderRow) {
+  const settlement = latestInsurance(row)
+  if (!settlement) return
+  await reverseInsuranceSettlement(settlement.id)
   await load()
 }
 

@@ -2,6 +2,7 @@ import { AuditAction, PaymentStatus, RefundStatus } from '../generated/prisma/en
 import type { Prisma } from '../generated/prisma/client'
 import { prisma } from '../lib/prisma'
 import { MockPaymentProvider, type PaymentProvider } from '../providers/payment-provider'
+import { offsetRefund } from './insurance'
 
 const defaultProvider = new MockPaymentProvider()
 
@@ -32,9 +33,12 @@ export async function recalculateOrderAmount(orderId: string) {
 
 export async function mockPayOrder(orderId: string, payMethod = 'MOCK_CASH', userId?: string, provider: PaymentProvider = defaultProvider) {
   return prisma.$transaction(async (tx) => {
-    const order = await tx.paymentOrder.findUnique({ where: { id: orderId }, include: { items: true } })
+    const order = await tx.paymentOrder.findUnique({ where: { id: orderId }, include: { items: true, insuranceSettlements: true } })
     if (!order) {
       throw new Error('Payment order not found')
+    }
+    if (order.insuranceSettlements.some((settlement) => settlement.status === 'PRE_SETTLED')) {
+      throw new Error('Settle or reverse insurance before payment')
     }
 
     const claimed = await tx.paymentOrder.updateMany({
@@ -151,7 +155,7 @@ export async function requestRefund(orderId: string, input: { amount?: number; r
 }
 
 export async function executeRefund(refundId: string, userId?: string, provider: PaymentProvider = defaultProvider) {
-  return prisma.$transaction(async (tx) => {
+  const item = await prisma.$transaction(async (tx) => {
     const refund = await tx.refundOrder.findUnique({ where: { id: refundId }, include: { paymentOrder: true } })
     if (!refund) {
       throw new Error('Refund order not found')
@@ -181,7 +185,7 @@ export async function executeRefund(refundId: string, userId?: string, provider:
 
     const item = await tx.refundOrder.findUnique({
       where: { id: refund.id },
-      include: { paymentOrder: true, transactions: true },
+      include: { paymentOrder: { include: { insuranceSettlements: true } }, transactions: true },
     })
 
     await tx.paymentOrder.update({
@@ -195,4 +199,15 @@ export async function executeRefund(refundId: string, userId?: string, provider:
 
     return item!
   })
+
+  const settledInsurance = item.paymentOrder.insuranceSettlements.filter((settlement) => settlement.status === 'SETTLED')
+  for (const settlement of settledInsurance) {
+    try {
+      await offsetRefund(settlement.id, Number(settlement.insuranceAmount))
+    } catch {
+      // The refund has already been committed; offsetRefund logs provider failures for operations follow-up.
+    }
+  }
+
+  return item
 }

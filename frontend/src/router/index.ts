@@ -11,6 +11,10 @@ import DrugStockMovementsPage from '../pages/DrugStockMovementsPage.vue'
 import DrugStockPage from '../pages/DrugStockPage.vue'
 import InpatientAdmissionsPage from '../pages/InpatientAdmissionsPage.vue'
 import InpatientDetailPage from '../pages/InpatientDetailPage.vue'
+import InsuranceLogsPage from '../pages/InsuranceLogsPage.vue'
+import InsuranceMappingsPage from '../pages/InsuranceMappingsPage.vue'
+import InsuranceProfilesPage from '../pages/InsuranceProfilesPage.vue'
+import InsuranceSettlementsPage from '../pages/InsuranceSettlementsPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import ModuleListPage from '../pages/ModuleListPage.vue'
 import PaymentHistoryPage from '../pages/PaymentHistoryPage.vue'
@@ -168,6 +172,10 @@ export const routes: RouteRecordRaw[] = [
       { path: 'clinical-templates', component: ClinicalTemplatesPage },
       { path: 'cashier', component: CashierWorkbenchPage },
       { path: 'payment-history', component: PaymentHistoryPage },
+      { path: 'insurance-profiles', component: InsuranceProfilesPage },
+      { path: 'insurance-mappings', component: InsuranceMappingsPage },
+      { path: 'insurance-settlements', component: InsuranceSettlementsPage },
+      { path: 'insurance-logs', component: InsuranceLogsPage },
       adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },

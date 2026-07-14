@@ -6,6 +6,7 @@ import {
   fetchDepartments,
   fetchDoctorSlots,
   fetchDoctors,
+  fetchFeeInsurance,
   fetchFees,
   fetchInpatientAdmissions,
   fetchNotifications,
@@ -181,7 +182,12 @@ export const usePatientStore = defineStore('patient', {
     async loadFees() {
       await this.ensureLogin()
       const response = await fetchFees()
-      this.fees = response.items
+      this.fees = await Promise.all(
+        response.items.map(async (fee) => {
+          const insurance = await fetchFeeInsurance(fee.id)
+          return { ...fee, insurance: insurance.item }
+        }),
+      )
     },
     async loadInpatientAdmissions() {
       await this.ensureLogin()

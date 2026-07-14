@@ -22,6 +22,31 @@ export const adminRouter = Router()
 
 adminRouter.use(auth, requireRole('ADMIN'))
 
+function clampRatio(value: unknown) {
+  if (value === undefined || value === null || value === '') return undefined
+  return Math.min(Math.max(Number(value), 0), 1)
+}
+
+function normalizeInsuranceProfile(data: Record<string, unknown>, body: Record<string, unknown>) {
+  const next = { ...data }
+  next.reimbursementRatio = clampRatio(next.reimbursementRatio)
+  next.selfPayFirstRatio = clampRatio(next.selfPayFirstRatio)
+  const userId = next.userId ?? body.userId
+  if (next.isActive === false) {
+    next.activeKey = null
+  } else if (userId) {
+    next.activeKey = userId
+  }
+  return next
+}
+
+function normalizeInsuranceMapping(data: Record<string, unknown>) {
+  const next = { ...data }
+  next.reimbursementRatio = clampRatio(next.reimbursementRatio)
+  next.selfPayFirstRatio = clampRatio(next.selfPayFirstRatio)
+  return next
+}
+
 const adminResources: Record<string, AdminResourceConfig> = {
   accounts: {
     delegate: prisma.user as unknown as AdminDelegate,
@@ -131,6 +156,23 @@ const adminResources: Record<string, AdminResourceConfig> = {
     include: { ward: { include: { campus: true } }, assignments: { include: { admission: { include: { visitMember: true } } } } },
     orderBy: [{ wardId: 'asc' }, { bedNo: 'asc' }],
     activeField: 'isActive',
+  },
+  'insurance-profiles': {
+    delegate: prisma.insuranceProfile as unknown as AdminDelegate,
+    searchableFields: ['insuredNo', 'insurerName', 'planName'],
+    writableFields: ['userId', 'insuredNo', 'insurerName', 'planName', 'reimbursementRatio', 'selfPayFirstRatio', 'isActive'],
+    include: { user: true },
+    orderBy: { createdAt: 'desc' },
+    activeField: 'isActive',
+    beforeWrite: normalizeInsuranceProfile,
+  },
+  'insurance-mappings': {
+    delegate: prisma.insuranceCatalogMapping as unknown as AdminDelegate,
+    searchableFields: ['feeItemCode', 'insuranceCode', 'insuranceName'],
+    writableFields: ['feeItemCode', 'insuranceCode', 'insuranceName', 'category', 'reimbursementRatio', 'selfPayFirstRatio', 'isActive'],
+    orderBy: { feeItemCode: 'asc' },
+    activeField: 'isActive',
+    beforeWrite: normalizeInsuranceMapping,
   },
   announcements: {
     delegate: prisma.announcement as unknown as AdminDelegate,
@@ -830,6 +872,32 @@ adminRouter.get('/stock-movements', async (_req, res, next) => {
 adminRouter.get('/stock-alerts', async (_req, res, next) => {
   try {
     const items = await listStockAlerts()
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/insurance-provider-logs', async (_req, res, next) => {
+  try {
+    const items = await prisma.insuranceProviderLog.findMany({
+      include: { settlement: { include: { paymentOrder: true, profile: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    res.json({ items })
+  } catch (error) {
+    next(error)
+  }
+})
+
+adminRouter.get('/insurance-settlements', async (_req, res, next) => {
+  try {
+    const items = await prisma.insuranceSettlement.findMany({
+      include: { paymentOrder: true, profile: true, items: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
     res.json({ items })
   } catch (error) {
     next(error)

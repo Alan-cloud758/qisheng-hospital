@@ -330,7 +330,10 @@ export async function settleDischarge(requestId: string) {
     if (claimed.count !== 1) {
       throw new Error('Only approved discharge can be settled')
     }
-    const charges = await tx.inpatientCharge.findMany({ where: { admissionId: request.admissionId, status: InpatientChargeStatus.UNBILLED } })
+    const charges = await tx.inpatientCharge.findMany({
+      where: { admissionId: request.admissionId, status: InpatientChargeStatus.UNBILLED },
+      include: { feeItem: true },
+    })
     const amount = charges.reduce((sum, charge) => sum + Number(charge.amount), 0)
     let paymentOrderId: string | undefined
 
@@ -346,7 +349,7 @@ export async function settleDischarge(requestId: string) {
           userId: request.admission.userId,
           items: {
             create: charges.map((charge) => ({
-              itemType: 'INPATIENT',
+              itemType: charge.feeItem?.code ?? 'INPATIENT',
               itemName: charge.itemName,
               quantity: charge.quantity,
               unitPrice: charge.unitPrice,

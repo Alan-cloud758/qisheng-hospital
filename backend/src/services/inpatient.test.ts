@@ -31,12 +31,17 @@ const mockTx = {
     updateMany: vi.fn(),
   },
   paymentOrder: {
+    create: vi.fn(),
     findMany: vi.fn(),
+  },
+  inpatientCharge: {
+    findMany: vi.fn(),
+    updateMany: vi.fn(),
   },
 }
 
 import { prisma } from '../lib/prisma'
-import { admitPatient, assignBed, assertCanDischarge, assertCanOccupyBed, completeDischarge, nextAdmissionNo } from './inpatient'
+import { admitPatient, assignBed, assertCanDischarge, assertCanOccupyBed, completeDischarge, nextAdmissionNo, settleDischarge } from './inpatient'
 
 describe('inpatient rules', () => {
   beforeEach(() => {
@@ -97,5 +102,36 @@ describe('inpatient rules', () => {
 
     await expect(completeDischarge('discharge-1')).rejects.toThrow('Inpatient charges must be paid before discharge')
     expect(mockTx.inpatientAdmission.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: InpatientAdmissionStatus.DISCHARGED }) }))
+  })
+
+  it('carries fee item code into inpatient payment order items for insurance catalog matching', async () => {
+    mockTx.dischargeRequest.findUnique.mockResolvedValueOnce({
+      id: 'discharge-1',
+      admissionId: 'admission-1',
+      status: DischargeRequestStatus.APPROVED,
+      admission: { id: 'admission-1', admissionNo: 'IP001', userId: 'user-1' },
+    }).mockResolvedValueOnce({ id: 'discharge-1' })
+    mockTx.dischargeRequest.updateMany.mockResolvedValue({ count: 1 })
+    mockTx.inpatientCharge.findMany.mockResolvedValue([
+      {
+        id: 'charge-1',
+        itemName: 'Bed fee',
+        quantity: 1,
+        unitPrice: 100,
+        amount: 100,
+        feeItem: { code: 'BED001' },
+      },
+    ])
+    mockTx.paymentOrder.create.mockResolvedValue({ id: 'pay-1' })
+
+    await settleDischarge('discharge-1')
+
+    expect(mockTx.paymentOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        items: {
+          create: [expect.objectContaining({ itemType: 'BED001', itemName: 'Bed fee' })],
+        },
+      }),
+    }))
   })
 })
