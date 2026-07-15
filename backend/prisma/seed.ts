@@ -200,6 +200,120 @@ export const outpatientSeedPlan = {
   ],
 }
 
+export const hisExpansionSeedPlan = {
+  adminResources: {
+    departments: outpatientSeedPlan.departments,
+  },
+  scheduleTemplates: Array.from({ length: 6 }, (_, index) => ({
+    id: `tpl-demo-${index + 1}`,
+    name: `Demo schedule template ${index + 1}`,
+    doctorId: outpatientSeedPlan.doctors[index].id,
+    departmentCode: outpatientSeedPlan.doctors[index].departmentCode,
+  })),
+  stockBatches: outpatientSeedPlan.drugs.slice(0, 30).map((drug, index) => ({
+    id: `stock-demo-${index + 1}`,
+    drugId: `drug-${drug.code}`,
+    batchNo: `BATCH2026${String(index + 1).padStart(3, '0')}`,
+    quantity: 80 + index * 3,
+  })),
+  stockMovements: outpatientSeedPlan.drugs.slice(0, 12).map((drug, index) => ({
+    id: `stock-movement-demo-${index + 1}`,
+    batchId: `stock-demo-${index + 1}`,
+    drugId: `drug-${drug.code}`,
+    type: index % 3 === 0 ? 'DISPENSE' : index % 3 === 1 ? 'RECEIVE' : 'ADJUST',
+    quantity: 2 + index,
+  })),
+  stockAlerts: outpatientSeedPlan.drugs.slice(0, 6).map((drug, index) => ({
+    id: `stock-alert-demo-${index + 1}`,
+    batchId: `stock-demo-${index + 1}`,
+    drugId: `drug-${drug.code}`,
+    type: index % 2 === 0 ? 'LOW_STOCK' : 'EXPIRING',
+  })),
+  paymentTransactions: Array.from({ length: 6 }, (_, index) => ({
+    id: `payment-transaction-demo-${index + 1}`,
+    paymentOrderId: `pay-reg-${index + 1}`,
+    transactionNo: `TXN20260714${String(index + 1).padStart(4, '0')}`,
+    amount: 20 + index * 5,
+  })),
+  refundOrders: Array.from({ length: 3 }, (_, index) => ({
+    id: `refund-demo-${index + 1}`,
+    paymentOrderId: `pay-reg-${index + 1}`,
+    refundNo: `RF20260714${String(index + 1).padStart(4, '0')}`,
+    amount: 10 + index * 2,
+  })),
+  clinicalTemplates: Array.from({ length: 12 }, (_, index) => ({
+    id: `record-template-${index + 1}`,
+    name: `Demo clinical template ${index + 1}`,
+    summary: ['发热咳嗽门诊模板', '慢病复诊模板', '消化道症状模板', '皮肤过敏模板'][index % 4],
+  })),
+  notifications: Array.from({ length: 10 }, (_, index) => ({
+    id: `notice-demo-${index + 1}`,
+    userId: outpatientSeedPlan.patientUsers[index % outpatientSeedPlan.patientUsers.length].id,
+    title: `Demo notification ${index + 1}`,
+  })),
+  wards: [
+    ['WARD-A', '综合内科一病区', '8F'],
+    ['WARD-B', '外科一病区', '9F'],
+    ['WARD-C', '儿科病区', '6F'],
+    ['WARD-D', '康复病区', '5F'],
+  ].map(([code, name, floor]) => ({ id: `ward-${code.toLowerCase()}`, code, name, floor })),
+  insuranceProfiles: outpatientSeedPlan.patientUsers.slice(0, 10).map((patient, index) => ({
+    id: `ins-profile-${index + 1}`,
+    userId: patient.id,
+    insuredNo: `INS2026${String(index + 1).padStart(5, '0')}`,
+  })),
+  labItems: [
+    ['LAB001', '血常规-白细胞', 'BLOOD', '10^9/L', 4, 10, 12],
+    ['LAB002', '血常规-红细胞', 'BLOOD', '10^12/L', 3.5, 5.5, 12],
+    ['LAB003', '血红蛋白', 'BLOOD', 'g/L', 110, 160, 12],
+    ['LAB004', '血小板', 'BLOOD', '10^9/L', 100, 300, 12],
+    ['LAB005', 'C反应蛋白', 'BLOOD', 'mg/L', 0, 8, 35],
+    ['LAB006', '空腹血糖', 'BLOOD', 'mmol/L', 3.9, 6.1, 10],
+    ['LAB007', '糖化血红蛋白', 'BLOOD', '%', 4, 6.5, 48],
+    ['LAB008', '总胆固醇', 'BLOOD', 'mmol/L', 0, 5.2, 18],
+    ['LAB009', '甘油三酯', 'BLOOD', 'mmol/L', 0, 1.7, 18],
+    ['LAB010', '低密度脂蛋白', 'BLOOD', 'mmol/L', 0, 3.4, 18],
+    ['LAB011', '谷丙转氨酶', 'BLOOD', 'U/L', 0, 40, 16],
+    ['LAB012', '谷草转氨酶', 'BLOOD', 'U/L', 0, 40, 16],
+    ['LAB013', '肌酐', 'BLOOD', 'umol/L', 44, 106, 16],
+    ['LAB014', '尿素氮', 'BLOOD', 'mmol/L', 2.9, 8.2, 16],
+    ['LAB015', '尿常规-蛋白', 'URINE', '', null, null, 8],
+    ['LAB016', '尿常规-白细胞', 'URINE', '/HP', 0, 5, 8],
+    ['LAB017', '甲状腺TSH', 'BLOOD', 'mIU/L', 0.27, 4.2, 45],
+    ['LAB018', '游离T3', 'BLOOD', 'pmol/L', 3.1, 6.8, 45],
+    ['LAB019', '游离T4', 'BLOOD', 'pmol/L', 12, 22, 45],
+    ['LAB020', '降钙素原', 'BLOOD', 'ng/mL', 0, 0.5, 80],
+  ].map(([code, name, specimenType, unit, referenceLow, referenceHigh, price]) => ({
+    id: `lab-${code}`,
+    code,
+    name,
+    specimenType,
+    unit,
+    referenceLow,
+    referenceHigh,
+    price,
+  })),
+  imagingItems: [
+    ['IMG001', '胸部正位片', 'DR', '胸部', 80],
+    ['IMG002', '腹部立位片', 'DR', '腹部', 80],
+    ['IMG003', '颈椎正侧位片', 'DR', '颈椎', 120],
+    ['IMG004', '膝关节正侧位片', 'DR', '膝关节', 120],
+    ['IMG005', '头颅CT平扫', 'CT', '头颅', 280],
+    ['IMG006', '胸部CT平扫', 'CT', '胸部', 320],
+    ['IMG007', '腹部CT平扫', 'CT', '腹部', 360],
+    ['IMG008', '腰椎CT', 'CT', '腰椎', 300],
+    ['IMG009', '头颅MRI平扫', 'MR', '头颅', 520],
+    ['IMG010', '膝关节MRI', 'MR', '膝关节', 560],
+    ['IMG011', '腹部超声', 'US', '腹部', 120],
+    ['IMG012', '甲状腺超声', 'US', '甲状腺', 120],
+  ].map(([code, name, modality, bodyPart, price]) => ({ id: `img-${code}`, code, name, modality, bodyPart, price })),
+  providerLogs: {
+    insurance: Array.from({ length: 5 }, (_, index) => ({ id: `insurance-provider-log-demo-${index + 1}`, settlementId: `ins-settlement-${index + 1}` })),
+    lab: Array.from({ length: 5 }, (_, index) => ({ id: `lab-provider-log-demo-${index + 1}`, requestId: `lab-request-demo-${index + 1}` })),
+    pacs: Array.from({ length: 5 }, (_, index) => ({ id: `pacs-provider-log-demo-${index + 1}`, requestId: `img-request-demo-${index + 1}` })),
+  },
+}
+
 const staffUsers = [
   { id: 'user-admin', username: 'admin', displayName: '系统管理员', role: 'ADMIN' },
   { id: 'user-cashier-lin', username: 'cashier_lin', displayName: '林收费员', role: 'CASHIER' },
@@ -257,9 +371,409 @@ async function createPrisma() {
   return new PrismaClient({ adapter: createMariaDbAdapter() })
 }
 
+interface SeedIdMaps {
+  userIds: Map<string, string>
+  doctorProfileIds: Map<string, string>
+  patientProfileIds: Map<string, string>
+}
+
+function mappedId(map: Map<string, string>, seedId: string) {
+  const value = map.get(seedId)
+  if (!value) {
+    throw new Error(`Missing mapped seed id: ${seedId}`)
+  }
+  return value
+}
+
+async function seedHisExpansion(prisma: Awaited<ReturnType<typeof createPrisma>>, idMaps: SeedIdMaps) {
+  for (const role of [
+    { id: 'role-inpatient-admin', code: 'INPATIENT_ADMIN', name: '住院管理员', description: '住院入出院和床位管理' },
+    { id: 'role-lab', code: 'LAB', name: '检验技师', description: 'LIS 检验样本和报告管理' },
+    { id: 'role-radiology', code: 'RADIOLOGY', name: '放射技师', description: 'PACS 影像检查和报告管理' },
+  ]) {
+    await prisma.role.upsert({ where: { code: role.code }, create: role, update: role })
+  }
+
+  for (const user of [
+    { id: 'user-lab-tech', username: 'lab_tech', displayName: '检验技师', roleId: 'role-lab' },
+    { id: 'user-radiology-tech', username: 'radiology_tech', displayName: '放射技师', roleId: 'role-radiology' },
+    { id: 'user-inpatient-admin', username: 'inpatient_admin', displayName: '住院管理员', roleId: 'role-inpatient-admin' },
+  ]) {
+    const actualUser = await prisma.user.upsert({
+      where: { username: user.username },
+      create: { id: user.id, username: user.username, passwordHash: hashPassword(demoPassword, 'qisheng-demo-salt'), displayName: user.displayName },
+      update: { passwordHash: hashPassword(demoPassword, 'qisheng-demo-salt'), displayName: user.displayName, status: 'ACTIVE' },
+    })
+    idMaps.userIds.set(user.id, actualUser.id)
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: actualUser.id, roleId: user.roleId } },
+      create: { id: `ur-${actualUser.id}-${user.roleId}`, userId: actualUser.id, roleId: user.roleId },
+      update: {},
+    })
+  }
+
+  for (const [index, template] of hisExpansionSeedPlan.scheduleTemplates.entries()) {
+    const department = outpatientSeedPlan.departments.find((item) => item.code === template.departmentCode)!
+    const doctorId = mappedId(idMaps.doctorProfileIds, template.doctorId)
+    await prisma.scheduleTemplate.upsert({
+      where: { id: template.id },
+      create: {
+        id: template.id,
+        name: template.name,
+        doctorId,
+        departmentId: department.id,
+        clinicRoomId: `room-${department.code.toLowerCase()}-1`,
+        period: index % 2 === 0 ? 'AM' : 'PM',
+        capacity: 12,
+        rules: { create: [{ weekday: (index % 6) + 1, startTime: index % 2 === 0 ? '08:00' : '14:00', endTime: index % 2 === 0 ? '12:00' : '17:30' }] },
+      },
+      update: { name: template.name, doctorId, departmentId: department.id, clinicRoomId: `room-${department.code.toLowerCase()}-1`, isActive: true },
+    })
+  }
+
+  for (const batch of hisExpansionSeedPlan.stockBatches) {
+    await prisma.drugStockBatch.upsert({
+      where: { drugId_batchNo: { drugId: batch.drugId, batchNo: batch.batchNo } },
+      create: { id: batch.id, drugId: batch.drugId, batchNo: batch.batchNo, quantity: batch.quantity, expiresAt: todayAt(180, 0), unitCost: 5 },
+      update: { quantity: batch.quantity, expiresAt: todayAt(180, 0), isActive: true },
+    })
+  }
+
+  for (const movement of hisExpansionSeedPlan.stockMovements) {
+    await prisma.drugStockMovement.upsert({
+      where: { id: movement.id },
+      create: {
+        id: movement.id,
+        batchId: movement.batchId,
+        drugId: movement.drugId,
+        type: movement.type as 'DISPENSE' | 'RECEIVE' | 'ADJUST',
+        quantity: movement.quantity,
+        beforeQuantity: 100,
+        afterQuantity: movement.type === 'DISPENSE' ? 100 - movement.quantity : 100 + movement.quantity,
+        reason: '演示库存流水',
+        operatorId: mappedId(idMaps.userIds, 'user-pharmacy-wu'),
+      },
+      update: {
+        type: movement.type as 'DISPENSE' | 'RECEIVE' | 'ADJUST',
+        quantity: movement.quantity,
+        beforeQuantity: 100,
+        afterQuantity: movement.type === 'DISPENSE' ? 100 - movement.quantity : 100 + movement.quantity,
+        reason: '演示库存流水',
+      },
+    })
+  }
+
+  for (const alert of hisExpansionSeedPlan.stockAlerts) {
+    await prisma.drugStockAlert.upsert({
+      where: { id: alert.id },
+      create: {
+        id: alert.id,
+        drugId: alert.drugId,
+        batchId: alert.batchId,
+        type: alert.type,
+        level: alert.type === 'LOW_STOCK' ? 'WARNING' : 'INFO',
+        message: alert.type === 'LOW_STOCK' ? '演示低库存预警' : '演示近效期预警',
+      },
+      update: {
+        type: alert.type,
+        level: alert.type === 'LOW_STOCK' ? 'WARNING' : 'INFO',
+        message: alert.type === 'LOW_STOCK' ? '演示低库存预警' : '演示近效期预警',
+        isResolved: false,
+      },
+    })
+  }
+
+  for (const transaction of hisExpansionSeedPlan.paymentTransactions) {
+    await prisma.paymentTransaction.upsert({
+      where: { transactionNo: transaction.transactionNo },
+      create: {
+        id: transaction.id,
+        paymentOrderId: transaction.paymentOrderId,
+        transactionNo: transaction.transactionNo,
+        providerTradeNo: `MOCK-${transaction.transactionNo}`,
+        payMethod: 'MOCK_CASH',
+        amount: transaction.amount,
+        status: 'SUCCESS',
+        raw: { seed: true, channel: 'mock' },
+      },
+      update: { amount: transaction.amount, status: 'SUCCESS', raw: { seed: true, channel: 'mock' } },
+    })
+  }
+
+  for (const refund of hisExpansionSeedPlan.refundOrders) {
+    await prisma.refundOrder.upsert({
+      where: { refundNo: refund.refundNo },
+      create: {
+        id: refund.id,
+        paymentOrderId: refund.paymentOrderId,
+        refundNo: refund.refundNo,
+        amount: refund.amount,
+        reason: '演示退款',
+        status: 'SUCCESS',
+        requestedById: mappedId(idMaps.userIds, 'user-cashier-lin'),
+        executedAt: todayAt(-1, 15),
+        transactions: {
+          create: {
+            id: `${refund.id}-transaction`,
+            transactionNo: `${refund.refundNo}-TXN`,
+            providerRefundNo: `MOCK-${refund.refundNo}`,
+            amount: refund.amount,
+            status: 'SUCCESS',
+            raw: { seed: true, channel: 'mock' },
+          },
+        },
+      },
+      update: { amount: refund.amount, reason: '演示退款', status: 'SUCCESS', executedAt: todayAt(-1, 15) },
+    })
+  }
+
+  for (const [index, template] of hisExpansionSeedPlan.clinicalTemplates.entries()) {
+    await prisma.medicalRecordTemplate.upsert({
+      where: { id: template.id },
+      create: { id: template.id, name: template.name, summary: template.summary, advice: '按医嘱治疗，必要时复诊。' },
+      update: { name: template.name, summary: template.summary, advice: '按医嘱治疗，必要时复诊。', isActive: true },
+    })
+    await prisma.commonDiagnosis.upsert({
+      where: { id: `common-diagnosis-${index + 1}` },
+      create: { id: `common-diagnosis-${index + 1}`, code: `CD${String(index + 1).padStart(3, '0')}`, name: template.summary, sortOrder: index + 1 },
+      update: { name: template.summary, sortOrder: index + 1, isActive: true },
+    })
+  }
+
+  for (const notification of hisExpansionSeedPlan.notifications) {
+    await prisma.patientNotification.upsert({
+      where: { id: notification.id },
+      create: { id: notification.id, userId: mappedId(idMaps.userIds, notification.userId), type: 'SYSTEM', title: notification.title, content: '演示通知：请关注就诊、检验和住院状态。' },
+      update: { title: notification.title, content: '演示通知：请关注就诊、检验和住院状态。' },
+    })
+  }
+
+  for (const ward of hisExpansionSeedPlan.wards) {
+    await prisma.ward.upsert({
+      where: { code: ward.code },
+      create: { id: ward.id, campusId: 'campus-main', code: ward.code, name: ward.name, floor: ward.floor, nurseStation: `${ward.name}护士站` },
+      update: { name: ward.name, floor: ward.floor, nurseStation: `${ward.name}护士站`, isActive: true },
+    })
+    for (let bedIndex = 1; bedIndex <= 6; bedIndex += 1) {
+      await prisma.bed.upsert({
+        where: { wardId_bedNo: { wardId: ward.id, bedNo: `${ward.code}-${bedIndex}` } },
+        create: { id: `bed-${ward.code.toLowerCase()}-${bedIndex}`, wardId: ward.id, bedNo: `${ward.code}-${bedIndex}`, dailyRate: 80 + bedIndex * 5 },
+        update: { dailyRate: 80 + bedIndex * 5, isActive: true },
+      })
+    }
+  }
+
+  for (let index = 0; index < 8; index += 1) {
+    const patient = outpatientSeedPlan.patientUsers[index]
+    const ward = hisExpansionSeedPlan.wards[index % hisExpansionSeedPlan.wards.length]
+    const doctor = outpatientSeedPlan.doctors[index % outpatientSeedPlan.doctors.length]
+    const userId = mappedId(idMaps.userIds, patient.id)
+    const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
+    const admissionId = `ip-demo-${index + 1}`
+    const bedId = `bed-${ward.code.toLowerCase()}-${(index % 6) + 1}`
+    await prisma.inpatientAdmission.upsert({
+      where: { admissionNo: `IP20260714${String(index + 1).padStart(4, '0')}` },
+      create: {
+        id: admissionId,
+        admissionNo: `IP20260714${String(index + 1).padStart(4, '0')}`,
+        status: index % 3 === 0 ? 'DISCHARGE_REQUESTED' : 'ADMITTED',
+        userId,
+        visitMemberId: `visit-member-${patient.patientNo}-1`,
+        attendingDoctorId: doctorId,
+        wardId: ward.id,
+        currentBedId: bedId,
+        diagnosis: ['肺炎', '腰椎间盘突出', '糖尿病血糖控制', '术后康复'][index % 4],
+        depositAmount: 1000 + index * 200,
+        admittedAt: todayAt(-index - 1, 10),
+      },
+      update: { status: index % 3 === 0 ? 'DISCHARGE_REQUESTED' : 'ADMITTED', currentBedId: bedId, wardId: ward.id, depositAmount: 1000 + index * 200 },
+    })
+    await prisma.bed.update({ where: { id: bedId }, data: { status: 'OCCUPIED' } })
+    await prisma.bedAssignment.upsert({
+      where: { id: `bed-assign-${index + 1}` },
+      create: { id: `bed-assign-${index + 1}`, admissionId, bedId, status: 'ACTIVE', reason: '演示入院分床' },
+      update: { admissionId, bedId, status: 'ACTIVE', releasedAt: null },
+    })
+    await prisma.inpatientOrder.upsert({
+      where: { id: `ip-order-${index + 1}` },
+      create: { id: `ip-order-${index + 1}`, admissionId, doctorId, type: 'LONG_TERM', content: '每日查房，监测生命体征' },
+      update: { content: '每日查房，监测生命体征', status: 'ACTIVE' },
+    })
+    await prisma.inpatientCharge.upsert({
+      where: { id: `ip-charge-${index + 1}` },
+      create: { id: `ip-charge-${index + 1}`, admissionId, orderId: `ip-order-${index + 1}`, itemName: '住院床位费', quantity: 1, unitPrice: 100, amount: 100 },
+      update: { itemName: '住院床位费', quantity: 1, unitPrice: 100, amount: 100, status: 'UNBILLED' },
+    })
+  }
+
+  for (const profile of hisExpansionSeedPlan.insuranceProfiles) {
+    const userId = mappedId(idMaps.userIds, profile.userId)
+    await prisma.insuranceProfile.upsert({
+      where: { insuredNo: profile.insuredNo },
+      create: { id: profile.id, userId, insuredNo: profile.insuredNo, insurerName: '启胜医保中心', planName: '职工基本医保', activeKey: userId },
+      update: { insurerName: '启胜医保中心', planName: '职工基本医保', isActive: true, activeKey: userId },
+    })
+  }
+
+  for (const feeItem of outpatientSeedPlan.feeItems.slice(0, 12)) {
+    await prisma.insuranceCatalogMapping.upsert({
+      where: { feeItemCode: feeItem.code as string },
+      create: { id: `ins-map-${feeItem.code}`, feeItemCode: feeItem.code as string, insuranceCode: `YB-${feeItem.code}`, insuranceName: feeItem.name as string, category: 'B' },
+      update: { insuranceName: feeItem.name as string, category: 'B', isActive: true },
+    })
+  }
+
+  for (const [index, profile] of hisExpansionSeedPlan.insuranceProfiles.slice(0, 5).entries()) {
+    const paymentOrderId = `pay-reg-${index + 1}`
+    await prisma.insuranceSettlement.upsert({
+      where: { settlementNo: `INSSET20260714${String(index + 1).padStart(4, '0')}` },
+      create: {
+        id: `ins-settlement-${index + 1}`,
+        settlementNo: `INSSET20260714${String(index + 1).padStart(4, '0')}`,
+        paymentOrderId,
+        profileId: profile.id,
+        source: 'OUTPATIENT',
+        status: index % 2 === 0 ? 'SETTLED' : 'PRE_SETTLED',
+        totalAmount: 100,
+        insuranceAmount: 60,
+        selfPayAmount: 40,
+        activeKey: `seed-${paymentOrderId}`,
+      },
+      update: { status: index % 2 === 0 ? 'SETTLED' : 'PRE_SETTLED', totalAmount: 100, insuranceAmount: 60, selfPayAmount: 40 },
+    })
+  }
+
+  for (const log of hisExpansionSeedPlan.providerLogs.insurance) {
+    await prisma.insuranceProviderLog.upsert({
+      where: { id: log.id },
+      create: { id: log.id, settlementId: log.settlementId, action: 'settle', request: { seed: true }, response: { status: 'OK' }, success: true },
+      update: { action: 'settle', request: { seed: true }, response: { status: 'OK' }, success: true },
+    })
+  }
+
+  for (const item of hisExpansionSeedPlan.labItems) {
+    await prisma.labTestItem.upsert({
+      where: { code: item.code as string },
+      create: {
+        id: item.id as string,
+        code: item.code as string,
+        name: item.name as string,
+        specimenType: item.specimenType as string,
+        unit: item.unit as string,
+        referenceLow: item.referenceLow as number | null,
+        referenceHigh: item.referenceHigh as number | null,
+        price: item.price as number,
+      },
+      update: {
+        name: item.name as string,
+        specimenType: item.specimenType as string,
+        unit: item.unit as string,
+        referenceLow: item.referenceLow as number | null,
+        referenceHigh: item.referenceHigh as number | null,
+        price: item.price as number,
+        isActive: true,
+      },
+    })
+  }
+
+  for (const item of hisExpansionSeedPlan.imagingItems) {
+    await prisma.imagingExamItem.upsert({
+      where: { code: item.code as string },
+      create: { id: item.id as string, code: item.code as string, name: item.name as string, modality: item.modality as string, bodyPart: item.bodyPart as string, price: item.price as number },
+      update: { name: item.name as string, modality: item.modality as string, bodyPart: item.bodyPart as string, price: item.price as number, isActive: true },
+    })
+  }
+
+  for (let index = 0; index < 6; index += 1) {
+    const patient = outpatientSeedPlan.patientUsers[index]
+    const doctor = outpatientSeedPlan.doctors[index]
+    const userId = mappedId(idMaps.userIds, patient.id)
+    const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
+    const labRequestId = `lab-request-demo-${index + 1}`
+    await prisma.labRequest.upsert({
+      where: { requestNo: `LIS20260714${String(index + 1).padStart(4, '0')}` },
+      create: {
+        id: labRequestId,
+        requestNo: `LIS20260714${String(index + 1).padStart(4, '0')}`,
+        status: 'PUBLISHED',
+        userId,
+        visitMemberId: `visit-member-${patient.patientNo}-1`,
+        doctorId,
+        source: 'OUTPATIENT',
+        clinicalNote: '演示检验申请',
+        items: { create: [{ itemId: 'lab-LAB001' }, { itemId: 'lab-LAB006' }] },
+        sample: { create: { id: `lab-sample-demo-${index + 1}`, barcode: `LABBC20260714${String(index + 1).padStart(4, '0')}`, status: 'RECEIVED', receivedAt: todayAt(-1, 9) } },
+        report: {
+          create: {
+            id: `lab-report-demo-${index + 1}`,
+            status: 'PUBLISHED',
+            summary: '演示检验报告，主要指标平稳。',
+            reviewedAt: todayAt(-1, 11),
+            publishedAt: todayAt(-1, 12),
+            results: {
+              create: [
+                { itemId: 'lab-LAB001', resultValue: '6.2', numericValue: 6.2, unit: '10^9/L', referenceLow: 4, referenceHigh: 10, abnormalFlag: 'NORMAL' },
+                { itemId: 'lab-LAB006', resultValue: '5.4', numericValue: 5.4, unit: 'mmol/L', referenceLow: 3.9, referenceHigh: 6.1, abnormalFlag: 'NORMAL' },
+              ],
+            },
+          },
+        },
+      },
+      update: { status: 'PUBLISHED', clinicalNote: '演示检验申请' },
+    })
+  }
+
+  for (const log of hisExpansionSeedPlan.providerLogs.lab) {
+    await prisma.labProviderLog.upsert({
+      where: { id: log.id },
+      create: { id: log.id, requestId: log.requestId, action: 'publishReport', request: { seed: true }, response: { status: 'OK' }, success: true },
+      update: { action: 'publishReport', request: { seed: true }, response: { status: 'OK' }, success: true },
+    })
+  }
+
+  for (let index = 0; index < 6; index += 1) {
+    const patient = outpatientSeedPlan.patientUsers[index]
+    const doctor = outpatientSeedPlan.doctors[index]
+    const userId = mappedId(idMaps.userIds, patient.id)
+    const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
+    const requestId = `img-request-demo-${index + 1}`
+    await prisma.imagingRequest.upsert({
+      where: { requestNo: `PACS20260714${String(index + 1).padStart(4, '0')}` },
+      create: {
+        id: requestId,
+        requestNo: `PACS20260714${String(index + 1).padStart(4, '0')}`,
+        status: 'PUBLISHED',
+        userId,
+        visitMemberId: `visit-member-${patient.patientNo}-1`,
+        doctorId,
+        source: 'OUTPATIENT',
+        clinicalNote: '演示影像申请',
+        items: { create: [{ itemId: `img-IMG${String((index % 12) + 1).padStart(3, '0')}` }] },
+        appointment: { create: { id: `img-appt-demo-${index + 1}`, status: 'COMPLETED', scheduledAt: todayAt(-1, 10), checkedInAt: todayAt(-1, 10, 10), completedAt: todayAt(-1, 10, 30), room: `DR-${index + 1}` } },
+        study: { create: { id: `img-study-demo-${index + 1}`, studyUid: `1.2.826.0.1.3680043.10.543.20260714.${index + 1}`, imageUrl: `/mock-pacs/studies/${requestId}/viewer`, modality: index % 2 === 0 ? 'DR' : 'CT' } },
+        report: { create: { id: `img-report-demo-${index + 1}`, status: 'PUBLISHED', findings: '演示影像所见未见明显急性异常。', impression: '演示影像结论：建议结合临床随访。', reviewedAt: todayAt(-1, 11), publishedAt: todayAt(-1, 12) } },
+      },
+      update: { status: 'PUBLISHED', clinicalNote: '演示影像申请' },
+    })
+  }
+
+  for (const log of hisExpansionSeedPlan.providerLogs.pacs) {
+    await prisma.pacsProviderLog.upsert({
+      where: { id: log.id },
+      create: { id: log.id, requestId: log.requestId, action: 'publishReport', request: { seed: true }, response: { status: 'OK' }, success: true },
+      update: { action: 'publishReport', request: { seed: true }, response: { status: 'OK' }, success: true },
+    })
+  }
+}
+
 async function seed() {
   const prisma = await createPrisma()
   const passwordHash = hashPassword(demoPassword, 'qisheng-demo-salt')
+  const idMaps: SeedIdMaps = {
+    userIds: new Map(),
+    doctorProfileIds: new Map(),
+    patientProfileIds: new Map(),
+  }
 
   try {
     for (const role of roles) {
@@ -323,14 +837,15 @@ async function seed() {
     }
 
     for (const staff of staffUsers) {
-      await prisma.user.upsert({
+      const user = await prisma.user.upsert({
         where: { username: staff.username },
         create: { id: staff.id, username: staff.username, passwordHash, displayName: staff.displayName },
         update: { passwordHash, displayName: staff.displayName, status: 'ACTIVE' },
       })
+      idMaps.userIds.set(staff.id, user.id)
       await prisma.userRole.upsert({
-        where: { userId_roleId: { userId: staff.id, roleId: `role-${staff.role.toLowerCase()}` } },
-        create: { id: `ur-${staff.id}-${staff.role.toLowerCase()}`, userId: staff.id, roleId: `role-${staff.role.toLowerCase()}` },
+        where: { userId_roleId: { userId: user.id, roleId: `role-${staff.role.toLowerCase()}` } },
+        create: { id: `ur-${user.id}-${staff.role.toLowerCase()}`, userId: user.id, roleId: `role-${staff.role.toLowerCase()}` },
         update: {},
       })
     }
@@ -338,69 +853,80 @@ async function seed() {
     for (const doctor of outpatientSeedPlan.doctors) {
       const userId = `user-${doctor.username}`
       const department = outpatientSeedPlan.departments.find((item) => item.code === doctor.departmentCode)!
-      await prisma.user.upsert({
+      const user = await prisma.user.upsert({
         where: { username: doctor.username },
         create: { id: userId, username: doctor.username, passwordHash, displayName: doctor.displayName },
         update: { passwordHash, displayName: doctor.displayName, status: 'ACTIVE' },
       })
+      idMaps.userIds.set(userId, user.id)
       await prisma.userRole.upsert({
-        where: { userId_roleId: { userId, roleId: 'role-doctor' } },
-        create: { id: `ur-${userId}-doctor`, userId, roleId: 'role-doctor' },
+        where: { userId_roleId: { userId: user.id, roleId: 'role-doctor' } },
+        create: { id: `ur-${user.id}-doctor`, userId: user.id, roleId: 'role-doctor' },
         update: {},
       })
-      await prisma.doctorProfile.upsert({
-        where: { employeeNo: doctor.employeeNo },
-        create: {
-          id: doctor.id,
-          userId,
-          departmentId: department.id,
-          employeeNo: doctor.employeeNo,
-          title: doctor.title,
-          specialty: doctor.specialty,
-          introduction: `${doctor.displayName}${doctor.title}，擅长${doctor.specialty}。`,
-          licenseNo: `LIC-${doctor.employeeNo}`,
-          consultationFee: doctor.title === '主任医师' ? 50 : doctor.title === '副主任医师' ? 35 : 20,
-        },
-        update: {
-          departmentId: department.id,
-          title: doctor.title,
-          specialty: doctor.specialty,
-          introduction: `${doctor.displayName}${doctor.title}，擅长${doctor.specialty}。`,
-          consultationFee: doctor.title === '主任医师' ? 50 : doctor.title === '副主任医师' ? 35 : 20,
-          isActive: true,
-        },
+      const doctorProfileData = {
+        userId: user.id,
+        departmentId: department.id,
+        employeeNo: doctor.employeeNo,
+        title: doctor.title,
+        specialty: doctor.specialty,
+        introduction: `${doctor.displayName}${doctor.title}，擅长${doctor.specialty}。`,
+        licenseNo: `LIC-${doctor.employeeNo}`,
+        consultationFee: doctor.title === '主任医师' ? 50 : doctor.title === '副主任医师' ? 35 : 20,
+      }
+      const existingDoctorProfile = await prisma.doctorProfile.findFirst({
+        where: { OR: [{ employeeNo: doctor.employeeNo }, { userId: user.id }] },
       })
+      const doctorProfile = existingDoctorProfile
+        ? await prisma.doctorProfile.update({
+            where: { id: existingDoctorProfile.id },
+            data: { ...doctorProfileData, isActive: true },
+          })
+        : await prisma.doctorProfile.create({
+            data: {
+              id: doctor.id,
+              ...doctorProfileData,
+            },
+          })
+      idMaps.doctorProfileIds.set(doctor.id, doctorProfile.id)
     }
 
     for (const patient of outpatientSeedPlan.patientUsers) {
-      await prisma.user.upsert({
+      const user = await prisma.user.upsert({
         where: { username: patient.username },
         create: { id: patient.id, username: patient.username, phone: patient.phone, passwordHash, displayName: patient.displayName },
         update: { phone: patient.phone, passwordHash, displayName: patient.displayName, status: 'ACTIVE' },
       })
+      idMaps.userIds.set(patient.id, user.id)
       await prisma.userRole.upsert({
-        where: { userId_roleId: { userId: patient.id, roleId: 'role-patient' } },
-        create: { id: `ur-${patient.id}-patient`, userId: patient.id, roleId: 'role-patient' },
+        where: { userId_roleId: { userId: user.id, roleId: 'role-patient' } },
+        create: { id: `ur-${user.id}-patient`, userId: user.id, roleId: 'role-patient' },
         update: {},
       })
-      await prisma.patientProfile.upsert({
-        where: { patientNo: patient.patientNo },
-        create: {
-          id: patient.profileId,
-          userId: patient.id,
-          patientNo: patient.patientNo,
-          realName: patient.displayName,
-          gender: Number(patient.patientNo.slice(-1)) % 2 === 0 ? '女' : '男',
-          birthday: todayAt(-12000 + Number(patient.patientNo.slice(-2)) * 100, 0),
-          phone: patient.phone,
-          healthNote: '演示患者档案，可用于预约、缴费和记录查询。',
-        },
-        update: {
-          realName: patient.displayName,
-          phone: patient.phone,
-          healthNote: '演示患者档案，可用于预约、缴费和记录查询。',
-        },
+      const patientProfileData = {
+        userId: user.id,
+        patientNo: patient.patientNo,
+        realName: patient.displayName,
+        gender: Number(patient.patientNo.slice(-1)) % 2 === 0 ? '女' : '男',
+        birthday: todayAt(-12000 + Number(patient.patientNo.slice(-2)) * 100, 0),
+        phone: patient.phone,
+        healthNote: '演示患者档案，可用于预约、缴费和记录查询。',
+      }
+      const existingPatientProfile = await prisma.patientProfile.findFirst({
+        where: { OR: [{ patientNo: patient.patientNo }, { userId: user.id }] },
       })
+      const patientProfile = existingPatientProfile
+        ? await prisma.patientProfile.update({
+            where: { id: existingPatientProfile.id },
+            data: patientProfileData,
+          })
+        : await prisma.patientProfile.create({
+            data: {
+              id: patient.profileId,
+              ...patientProfileData,
+            },
+          })
+      idMaps.patientProfileIds.set(patient.profileId, patientProfile.id)
 
       for (let memberIndex = 1; memberIndex <= (patient.username === 'patient_demo' ? 3 : 1); memberIndex += 1) {
         const id = `visit-member-${patient.patientNo}-${memberIndex}`
@@ -408,7 +934,7 @@ async function seed() {
           where: { id },
           create: {
             id,
-            patientId: patient.profileId,
+            patientId: patientProfile.id,
             name: memberIndex === 1 ? patient.displayName : `${patient.displayName}家属${memberIndex - 1}`,
             gender: memberIndex % 2 === 0 ? '女' : '男',
             birthday: todayAt(-9000 - memberIndex * 300, 0),
@@ -417,7 +943,7 @@ async function seed() {
             relationship: memberIndex === 1 ? 'SELF' : memberIndex === 2 ? 'PARENT' : 'CHILD',
             isDefault: memberIndex === 1,
           },
-          update: { phone: patient.phone, isDefault: memberIndex === 1 },
+          update: { patientId: patientProfile.id, phone: patient.phone, isDefault: memberIndex === 1 },
         })
       }
     }
@@ -483,6 +1009,7 @@ async function seed() {
     const scheduleDoctors = outpatientSeedPlan.doctors.slice(0, 12)
     for (const [doctorIndex, doctor] of scheduleDoctors.entries()) {
       const department = outpatientSeedPlan.departments.find((item) => item.code === doctor.departmentCode)!
+      const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
       for (let day = 1; day <= 7; day += 1) {
         const period = doctorIndex % 2 === 0 ? 'AM' : 'PM'
         const scheduleId = `sched-${doctor.employeeNo}-${day}-${period.toLowerCase()}`
@@ -491,14 +1018,14 @@ async function seed() {
           where: { id: scheduleId },
           create: {
             id: scheduleId,
-            doctorId: doctor.id,
+            doctorId,
             departmentId: department.id,
             clinicRoomId: roomId,
             workDate: todayAt(day, 0),
             period,
             capacity: 4,
           },
-          update: { doctorId: doctor.id, departmentId: department.id, clinicRoomId: roomId, workDate: todayAt(day, 0), period, capacity: 4 },
+          update: { doctorId, departmentId: department.id, clinicRoomId: roomId, workDate: todayAt(day, 0), period, capacity: 4 },
         })
 
         for (let slot = 0; slot < 4; slot += 1) {
@@ -537,6 +1064,8 @@ async function seed() {
       const patient = outpatientSeedPlan.patientUsers[index % outpatientSeedPlan.patientUsers.length]
       const doctor = scheduleDoctors[index % scheduleDoctors.length]
       const department = outpatientSeedPlan.departments.find((item) => item.code === doctor.departmentCode)!
+      const userId = mappedId(idMaps.userIds, patient.id)
+      const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
       const slotId = allSlotIds[index]
       const status = registrationStatuses[index % registrationStatuses.length]
       const payStatus = index % 5 === 0 ? 'CANCELLED' : index % 3 === 0 ? 'PAID' : 'PENDING'
@@ -552,7 +1081,7 @@ async function seed() {
           title: `${department.name}${doctor.displayName}门诊费用`,
           amount,
           status: payStatus,
-          userId: patient.id,
+          userId,
           paidAt: payStatus === 'PAID' ? todayAt(-1, 10, index % 50) : null,
         },
         update: { title: `${department.name}${doctor.displayName}门诊费用`, amount, status: payStatus, paidAt: payStatus === 'PAID' ? todayAt(-1, 10, index % 50) : null },
@@ -580,10 +1109,10 @@ async function seed() {
           id: registrationId,
           registrationNo: `REG2026${String(index + 1).padStart(5, '0')}`,
           status,
-          userId: patient.id,
+          userId,
           visitMemberId: `visit-member-${patient.patientNo}-1`,
           departmentId: department.id,
-          doctorId: doctor.id,
+          doctorId,
           slotId,
           paymentOrderId,
           checkedInAt: ['CHECKED_IN', 'IN_VISIT', 'COMPLETED'].includes(status) ? todayAt(0, 8, index) : null,
@@ -591,10 +1120,10 @@ async function seed() {
         },
         update: {
           status,
-          userId: patient.id,
+          userId,
           visitMemberId: `visit-member-${patient.patientNo}-1`,
           departmentId: department.id,
-          doctorId: doctor.id,
+          doctorId,
           slotId,
           paymentOrderId,
           checkedInAt: ['CHECKED_IN', 'IN_VISIT', 'COMPLETED'].includes(status) ? todayAt(0, 8, index) : null,
@@ -606,6 +1135,7 @@ async function seed() {
     for (let index = 0; index < 15; index += 1) {
       const registrationId = `reg-${index + 1}`
       const doctor = scheduleDoctors[index % scheduleDoctors.length]
+      const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
       const encounterId = `enc-${index + 1}`
       const completed = index % 2 === 0
       await prisma.encounter.upsert({
@@ -613,14 +1143,14 @@ async function seed() {
         create: {
           id: encounterId,
           registrationId,
-          doctorId: doctor.id,
+          doctorId,
           chiefComplaint: ['咳嗽三天', '头晕乏力', '复诊调药', '皮疹瘙痒', '胃痛反酸'][index % 5],
           status: completed ? 'COMPLETED' : 'OPEN',
           startedAt: todayAt(0, 9, index),
           completedAt: completed ? todayAt(0, 9, index + 20) : null,
         },
         update: {
-          doctorId: doctor.id,
+          doctorId,
           chiefComplaint: ['咳嗽三天', '头晕乏力', '复诊调药', '皮疹瘙痒', '胃痛反酸'][index % 5],
           status: completed ? 'COMPLETED' : 'OPEN',
           startedAt: todayAt(0, 9, index),
@@ -646,6 +1176,7 @@ async function seed() {
 
     for (let index = 0; index < 20; index += 1) {
       const doctor = scheduleDoctors[index % scheduleDoctors.length]
+      const doctorId = mappedId(idMaps.doctorProfileIds, doctor.id)
       const prescriptionId = `rx-${index + 1}`
       const status = (['SUBMITTED', 'REVIEWED', 'DISPENSED', 'DRAFT'] as const)[index % 4]
       await prisma.prescription.upsert({
@@ -653,11 +1184,11 @@ async function seed() {
         create: {
           id: prescriptionId,
           encounterId: index < 15 ? `enc-${index + 1}` : null,
-          doctorId: doctor.id,
+          doctorId,
           status,
           note: '演示处方，请按医嘱使用。',
         },
-        update: { encounterId: index < 15 ? `enc-${index + 1}` : null, doctorId: doctor.id, status, note: '演示处方，请按医嘱使用。' },
+        update: { encounterId: index < 15 ? `enc-${index + 1}` : null, doctorId, status, note: '演示处方，请按医嘱使用。' },
       })
 
       for (let itemIndex = 0; itemIndex < 2; itemIndex += 1) {
@@ -682,7 +1213,7 @@ async function seed() {
         where: { id: `audit-${index + 1}` },
         create: {
           id: `audit-${index + 1}`,
-          userId: index % 2 === 0 ? 'user-admin' : 'user-doctor_chen',
+          userId: index % 2 === 0 ? mappedId(idMaps.userIds, 'user-admin') : mappedId(idMaps.userIds, 'user-doctor_chen'),
           action: (['CREATE', 'UPDATE', 'LOGIN', 'PAY', 'CANCEL'] as const)[index % 5],
           resource: ['Registration', 'Encounter', 'PaymentOrder', 'Prescription', 'User'][index % 5],
           resourceId: `demo-${index + 1}`,
@@ -694,6 +1225,8 @@ async function seed() {
       })
     }
 
+    await seedHisExpansion(prisma, idMaps)
+
     console.log('Seed completed:', {
       campuses: outpatientSeedPlan.campuses.length,
       departments: outpatientSeedPlan.departments.length,
@@ -704,6 +1237,8 @@ async function seed() {
       registrations: 30,
       prescriptions: 20,
       drugs: outpatientSeedPlan.drugs.length,
+      labItems: hisExpansionSeedPlan.labItems.length,
+      imagingItems: hisExpansionSeedPlan.imagingItems.length,
     })
   } finally {
     await prisma.$disconnect()
