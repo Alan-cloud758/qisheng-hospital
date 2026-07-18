@@ -12,9 +12,13 @@
     <section class="panel">
       <div class="queue-toolbar">
         <strong>今日队列</strong>
-        <el-button type="primary" @click="callNext">叫下一位</el-button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <el-tag type="info" size="small">F2 叫号</el-tag>
+          <el-tag type="info" size="small">F3 完成</el-tag>
+          <el-button type="primary" @click="callNext">叫下一位</el-button>
+        </div>
       </div>
-      <el-table :data="queueTickets" border>
+      <el-table v-if="queueTickets.length > 0" :data="queueTickets" border>
         <el-table-column label="号码" prop="queueNo" width="80" />
         <el-table-column label="患者" min-width="120">
           <template #default="{ row }">{{ row.registration?.visitMember?.name || '-' }}</template>
@@ -27,10 +31,15 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-else description="暂无排队患者" :image-size="60" />
     </section>
 
     <section class="panel">
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong>接诊列表</strong>
+        <el-input v-model="searchQuery" placeholder="搜索患者/科室/状态" clearable style="width:240px;" />
+      </div>
+      <el-table v-loading="loading" :data="filteredRows" border stripe>
         <el-table-column label="患者" min-width="120">
           <template #default="{ row }">{{ row.visitMember?.name || '-' }}</template>
         </el-table-column>
@@ -56,6 +65,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && filteredRows.length === 0" description="暂无接诊记录，患者签到后将自动出现在此列表" :image-size="80" />
     </section>
 
     <el-drawer v-model="templateVisible" title="临床模板" size="560px">
@@ -139,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import {
   applyEncounterRecordTemplate,
   callNextQueuePatient,
@@ -204,7 +214,31 @@ interface QueueTicketRow {
 
 const loading = ref(false)
 const rows = ref<DoctorQueueRow[]>([])
+const searchQuery = ref('')
 const queueTickets = ref<QueueTicketRow[]>([])
+
+const filteredRows = computed(() => {
+  if (!searchQuery.value.trim()) return rows.value
+  const q = searchQuery.value.trim().toLowerCase()
+  return rows.value.filter((row) =>
+    (row.visitMember?.name || '').toLowerCase().includes(q) ||
+    (row.department?.name || '').toLowerCase().includes(q) ||
+    (row.status || '').toLowerCase().includes(q)
+  )
+})
+
+function onKeydown(e: KeyboardEvent) {
+  if (templateVisible.value) return
+  if (e.key === 'F2' || (e.ctrlKey && e.key === 'Enter')) {
+    e.preventDefault()
+    void callNext()
+  }
+  if (e.key === 'F3') {
+    e.preventDefault()
+    const firstOpen = rows.value.find((r) => r.encounter?.status === 'OPEN')
+    if (firstOpen?.encounter) void complete(firstOpen.encounter.id)
+  }
+}
 const labItems = ref<LabItemRow[]>([])
 const imagingItems = ref<ImagingItemRow[]>([])
 const templateVisible = ref(false)
@@ -339,6 +373,11 @@ async function resubmit(id: string) {
 
 onMounted(() => {
   void load()
+  window.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 

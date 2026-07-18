@@ -32,27 +32,27 @@ export async function fetchDashboard() {
 }
 
 export async function fetchDashboardOverview(params: Record<string, unknown> = {}) {
-  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/overview', { params })
+  const response = await apiClient.get<{ item: DashboardOverview }>('/admin/dashboard/overview', { params })
   return response.data.item
 }
 
 export async function fetchDashboardOutpatient(params: Record<string, unknown> = {}) {
-  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/outpatient', { params })
+  const response = await apiClient.get<{ item: OutpatientDashboard }>('/admin/dashboard/outpatient', { params })
   return response.data.item
 }
 
 export async function fetchDashboardRevenue(params: Record<string, unknown> = {}) {
-  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/revenue', { params })
+  const response = await apiClient.get<{ item: RevenueDashboard }>('/admin/dashboard/revenue', { params })
   return response.data.item
 }
 
 export async function fetchDashboardPharmacyAlerts(params: Record<string, unknown> = {}) {
-  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/pharmacy-alerts', { params })
+  const response = await apiClient.get<{ item: PharmacyAlertsDashboard }>('/admin/dashboard/pharmacy-alerts', { params })
   return response.data.item
 }
 
 export async function fetchDashboardQueuePressure(params: Record<string, unknown> = {}) {
-  const response = await apiClient.get<{ item: unknown }>('/admin/dashboard/queue-pressure', { params })
+  const response = await apiClient.get<{ item: QueuePressureDashboard }>('/admin/dashboard/queue-pressure', { params })
   return response.data.item
 }
 
@@ -74,6 +74,59 @@ export async function fetchRegistrations(params: Record<string, unknown> = {}) {
 export interface PaginatedItems<T = unknown> {
   items: T[]
   pagination: { page: number; pageSize: number; total: number }
+}
+
+export interface DashboardOverview {
+  registrationCount: number
+  completedCount: number
+  completionRate: number
+  pendingPaymentCount: number
+  netRevenue: number
+  queueWaiting: number
+}
+
+export interface OutpatientDashboard {
+  total: number
+  booked: number
+  checkedIn: number
+  inVisit: number
+  completed: number
+  noShow: number
+  cancelled: number
+  departmentLoad: Array<{ departmentId: string; departmentName: string; registrationCount: number; completedCount: number; waitingCount: number; completionRate: number }>
+}
+
+export interface RevenueDashboard {
+  total: number
+  trend: Array<{ date: string; amount: number }>
+}
+
+export interface QueuePressureDashboard {
+  totalWaiting: number
+  items: Array<{ doctorName: string; departmentName: string; waiting: number; called: number; skipped: number }>
+}
+
+export interface PharmacyAlertsDashboard {
+  total: number
+  critical: number
+  items: Array<{ drugName: string; type: string; level: string }>
+}
+
+export interface DoctorQueueItem {
+  id: string
+  status: string
+  visitMember?: { name?: string }
+  department?: { name?: string }
+  slot?: { startTime?: string }
+  encounter?: { id: string; status: string; prescriptions?: Array<{ id: string; status: string; rejectedReason?: string }> }
+  queueTicket?: { id: string; queueNo: number; status: string }
+}
+
+export interface QueueTicket {
+  id: string
+  queueNo: number
+  status: string
+  registration?: { visitMember?: { name?: string } }
 }
 
 export async function fetchAdminResource(resource: string, params: Record<string, unknown> = {}) {
@@ -127,12 +180,12 @@ export async function markRegistrationNoShow(id: string, reason: string) {
 }
 
 export async function fetchDoctorQueue() {
-  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/queue')
+  const response = await apiClient.get<{ items: DoctorQueueItem[] }>('/staff/doctor/queue')
   return response.data.items
 }
 
 export async function fetchDoctorQueueTickets() {
-  const response = await apiClient.get<{ items: unknown[] }>('/staff/doctor/queue-tickets')
+  const response = await apiClient.get<{ items: QueueTicket[] }>('/staff/doctor/queue-tickets')
   return response.data.items
 }
 
@@ -475,4 +528,149 @@ export async function createClinicalTemplateResource(resource: string, data: Rec
 export async function updateClinicalTemplateResource(resource: string, id: string, data: Record<string, unknown>) {
   const response = await apiClient.put<{ item: unknown }>(`/admin/${resource}/${id}`, data)
   return response.data.item
+}
+
+// ═══════════════════════════════════════════════
+// 体检管理
+// ═══════════════════════════════════════════════
+
+export async function fetchExamPackages() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/exam/packages')
+  return response.data.items
+}
+
+export async function fetchExamOrders(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<PaginatedItems>('/admin/exam/orders', { params })
+  return response.data
+}
+
+export async function submitExamResult(itemId: string, data: { resultValue: string; numericValue?: number; unit?: string; abnormalFlag?: string }) {
+  const response = await apiClient.put<{ item: unknown }>(`/admin/exam/order-items/${itemId}/result`, data)
+  return response.data.item
+}
+
+export async function completeExamOrder(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/exam/orders/${id}/complete`)
+  return response.data.item
+}
+
+export async function reportExamOrder(id: string, summary: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/exam/orders/${id}/report`, { summary })
+  return response.data.item
+}
+
+// ═══════════════════════════════════════════════
+// 手术管理
+// ═══════════════════════════════════════════════
+
+export async function fetchSurgeryRequests() {
+  const response = await apiClient.get<PaginatedItems>('/admin/surgery/requests')
+  return response.data
+}
+
+export async function fetchOperatingRooms() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/surgery/rooms')
+  return response.data.items
+}
+
+export async function createSurgeryRequest(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/admin/surgery/requests', data)
+  return response.data.item
+}
+
+export async function scheduleSurgery(data: { requestId: string; roomId: string; scheduledStart: string; scheduledEnd: string }) {
+  const response = await apiClient.post<{ item: unknown }>('/admin/surgery/schedules', data)
+  return response.data.item
+}
+
+export async function startSurgery(scheduleId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/surgery/schedules/${scheduleId}/start`)
+  return response.data.item
+}
+
+export async function completeSurgery(scheduleId: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/surgery/schedules/${scheduleId}/complete`)
+  return response.data.item
+}
+
+// ═══════════════════════════════════════════════
+// 护理管理
+// ═══════════════════════════════════════════════
+
+export async function fetchVitalSigns(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/nursing/vital-signs/${admissionId}`)
+  return response.data.items
+}
+
+export async function recordVitalSigns(admissionId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nursing/vital-signs/${admissionId}`, data)
+  return response.data.item
+}
+
+export async function fetchNursingAssessments(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/nursing/assessments/${admissionId}`)
+  return response.data.items
+}
+
+export async function createNursingAssessment(admissionId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nursing/assessments/${admissionId}`, data)
+  return response.data.item
+}
+
+export async function fetchNursingExecutions(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/nursing/executions/${admissionId}`)
+  return response.data.items
+}
+
+export async function executeNursingTask(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/nursing/executions/${id}/execute`)
+  return response.data.item
+}
+
+export async function fetchShiftReports() {
+  const response = await apiClient.get<PaginatedItems>('/staff/nursing/shift-reports')
+  return response.data
+}
+
+// ═══════════════════════════════════════════════
+// 物资耗材
+// ═══════════════════════════════════════════════
+
+export async function fetchConsumableCatalog() {
+  const response = await apiClient.get<PaginatedItems>('/admin/consumables/catalog')
+  return response.data
+}
+
+export async function fetchConsumableBatches() {
+  const response = await apiClient.get<PaginatedItems>('/admin/consumables/batches')
+  return response.data
+}
+
+export async function fetchConsumableMovements() {
+  const response = await apiClient.get<PaginatedItems>('/admin/consumables/movements')
+  return response.data
+}
+
+// ═══════════════════════════════════════════════
+// 运营分析
+// ═══════════════════════════════════════════════
+
+export async function fetchAnalyticsRevenue(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ total: number; trend: Array<{ date: string; amount: number }>; orderCount: number }>('/admin/analytics/revenue', { params })
+  return response.data
+}
+
+export async function fetchAnalyticsDepartmentWorkload() {
+  const response = await apiClient.get<{ items: Array<{ departmentId: string; departmentName: string; registrationCount: number; completedCount: number }> }>('/admin/analytics/department-workload')
+  return response.data.items
+}
+
+export async function fetchAnalyticsDoctorWorkload() {
+  const response = await apiClient.get<{ items: Array<{ doctorId: string; doctorName: string; departmentName: string; encounterCount: number; prescriptionCount: number }> }>('/admin/analytics/doctor-workload')
+  return response.data.items
+}
+
+export async function fetchAnalyticsDrugSales() {
+  const response = await apiClient.get<{ items: Array<{ drugId: string; drugName: string; totalQuantity: number; totalAmount: number }> }>('/admin/analytics/drug-sales')
+  return response.data.items
 }

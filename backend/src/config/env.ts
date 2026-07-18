@@ -8,6 +8,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_ENABLED: z.coerce.boolean().default(false),
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173'),
 })
 
 export const env = envSchema.parse(process.env)

@@ -18,27 +18,27 @@ describe('admin operability routes', () => {
     expect(response.status).toBe(401)
   })
 
-  it('hashes account password without persisting the plain password field', () => {
+  it('hashes account password without persisting the plain password field', async () => {
     const config = {
       writableFields: ['username', 'password'],
       beforeWrite: hashAccountPassword,
     } as AdminResourceConfig
 
-    const data = toWritableData(config, { username: 'operator', password: 'secret123' }, 'create')
+    const data = await toWritableData(config, { username: 'operator', password: 'secret123' }, 'create')
 
     expect(data.username).toBe('operator')
     expect(data.password).toBeUndefined()
     expect(typeof data.passwordHash).toBe('string')
-    expect(verifyPassword('secret123', String(data.passwordHash))).toBe(true)
+    expect(await verifyPassword('secret123', String(data.passwordHash))).toBe(true)
   })
 
-  it('does not overwrite account password when update omits password', () => {
+  it('does not overwrite account password when update omits password', async () => {
     const config = {
       writableFields: ['displayName', 'password'],
       beforeWrite: hashAccountPassword,
     } as AdminResourceConfig
 
-    const data = toWritableData(config, { displayName: '运营员' }, 'update')
+    const data = await toWritableData(config, { displayName: '运营员' }, 'update')
 
     expect(data).toEqual({ displayName: '运营员' })
   })

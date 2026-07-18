@@ -1,30 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
-import AdminResourcePage from '../pages/AdminResourcePage.vue'
-import BedsPage from '../pages/BedsPage.vue'
-import CashierWorkbenchPage from '../pages/CashierWorkbenchPage.vue'
-import ClinicalTemplatesPage from '../pages/ClinicalTemplatesPage.vue'
-import DashboardPage from '../pages/DashboardPage.vue'
-import DoctorWorkbenchPage from '../pages/DoctorWorkbenchPage.vue'
-import DrugStockMovementsPage from '../pages/DrugStockMovementsPage.vue'
-import DrugStockPage from '../pages/DrugStockPage.vue'
-import InpatientAdmissionsPage from '../pages/InpatientAdmissionsPage.vue'
-import InpatientDetailPage from '../pages/InpatientDetailPage.vue'
-import ImagingItemsPage from '../pages/ImagingItemsPage.vue'
-import InsuranceLogsPage from '../pages/InsuranceLogsPage.vue'
-import InsuranceMappingsPage from '../pages/InsuranceMappingsPage.vue'
-import InsuranceProfilesPage from '../pages/InsuranceProfilesPage.vue'
-import InsuranceSettlementsPage from '../pages/InsuranceSettlementsPage.vue'
-import LabItemsPage from '../pages/LabItemsPage.vue'
-import LabWorkbenchPage from '../pages/LabWorkbenchPage.vue'
 import LoginPage from '../pages/LoginPage.vue'
-import ModuleListPage from '../pages/ModuleListPage.vue'
-import PaymentHistoryPage from '../pages/PaymentHistoryPage.vue'
-import PharmacyWorkbenchPage from '../pages/PharmacyWorkbenchPage.vue'
-import RadiologyWorkbenchPage from '../pages/RadiologyWorkbenchPage.vue'
-import RegistrationsPage from '../pages/RegistrationsPage.vue'
-import SchedulesPage from '../pages/SchedulesPage.vue'
 import { pinia, useAuthStore } from '../stores/auth'
 
 const modulePage = (
@@ -36,7 +13,7 @@ const modulePage = (
   eyebrow = 'Hospital Module',
 ) => ({
   path,
-  component: ModuleListPage,
+  component: () => import('../pages/ModuleListPage.vue'),
   props: { eyebrow, title, subtitle, resource, columns },
 })
 
@@ -51,7 +28,7 @@ const adminResourcePage = (
   eyebrow = 'Master Data',
 ) => ({
   path,
-  component: AdminResourcePage,
+  component: () => import('../pages/AdminResourcePage.vue'),
   props: { eyebrow, title, subtitle, resource, columns, fields, toggleable },
 })
 
@@ -62,7 +39,7 @@ export const routes: RouteRecordRaw[] = [
     component: AdminLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: '', component: DashboardPage },
+      { path: '', component: () => import('../pages/DashboardPage.vue') },
       adminResourcePage('accounts', '账号管理', '维护员工、医生和患者账号基础信息。', 'accounts', [
         { key: 'username', label: '账号' },
         { key: 'displayName', label: '姓名' },
@@ -155,35 +132,35 @@ export const routes: RouteRecordRaw[] = [
         { key: 'phone', label: '电话' },
         { key: 'patient.realName', label: '所属患者' },
       ]),
-      { path: 'schedules', component: SchedulesPage },
+      { path: 'schedules', component: () => import('../pages/SchedulesPage.vue') },
       modulePage('slots', '号源池', '查看未来号源时间、状态和所属医生。', 'slots', [
         { key: 'schedule.doctor.user.displayName', label: '医生' },
         { key: 'schedule.department.name', label: '科室' },
         { key: 'startTime', label: '开始时间' },
         { key: 'status', label: '状态' },
       ]),
-      { path: 'registrations', component: RegistrationsPage },
+      { path: 'registrations', component: () => import('../pages/RegistrationsPage.vue') },
       modulePage('encounters', '就诊记录', '查看病历、诊断、医嘱和处方汇总。', 'encounters', [
         { key: 'registration.visitMember.name', label: '患者' },
         { key: 'doctor.user.displayName', label: '医生' },
         { key: 'status', label: '状态' },
         { key: 'diagnoses', label: '诊断数' },
       ]),
-      { path: 'doctor', component: DoctorWorkbenchPage },
-      { path: 'inpatient-admissions', component: InpatientAdmissionsPage },
-      { path: 'beds', component: BedsPage },
-      { path: 'inpatient-detail', component: InpatientDetailPage },
-      { path: 'clinical-templates', component: ClinicalTemplatesPage },
-      { path: 'cashier', component: CashierWorkbenchPage },
-      { path: 'payment-history', component: PaymentHistoryPage },
-      { path: 'insurance-profiles', component: InsuranceProfilesPage },
-      { path: 'insurance-mappings', component: InsuranceMappingsPage },
-      { path: 'insurance-settlements', component: InsuranceSettlementsPage },
-      { path: 'insurance-logs', component: InsuranceLogsPage },
-      { path: 'lab-items', component: LabItemsPage },
-      { path: 'lab', component: LabWorkbenchPage },
-      { path: 'imaging-items', component: ImagingItemsPage },
-      { path: 'radiology', component: RadiologyWorkbenchPage },
+      { path: 'doctor', component: () => import('../pages/DoctorWorkbenchPage.vue') },
+      { path: 'inpatient-admissions', component: () => import('../pages/InpatientAdmissionsPage.vue') },
+      { path: 'beds', component: () => import('../pages/BedsPage.vue') },
+      { path: 'inpatient-detail', component: () => import('../pages/InpatientDetailPage.vue') },
+      { path: 'clinical-templates', component: () => import('../pages/ClinicalTemplatesPage.vue') },
+      { path: 'cashier', component: () => import('../pages/CashierWorkbenchPage.vue') },
+      { path: 'payment-history', component: () => import('../pages/PaymentHistoryPage.vue') },
+      { path: 'insurance-profiles', component: () => import('../pages/InsuranceProfilesPage.vue') },
+      { path: 'insurance-mappings', component: () => import('../pages/InsuranceMappingsPage.vue') },
+      { path: 'insurance-settlements', component: () => import('../pages/InsuranceSettlementsPage.vue') },
+      { path: 'insurance-logs', component: () => import('../pages/InsuranceLogsPage.vue') },
+      { path: 'lab-items', component: () => import('../pages/LabItemsPage.vue') },
+      { path: 'lab', component: () => import('../pages/LabWorkbenchPage.vue') },
+      { path: 'imaging-items', component: () => import('../pages/ImagingItemsPage.vue') },
+      { path: 'radiology', component: () => import('../pages/RadiologyWorkbenchPage.vue') },
       adminResourcePage('fee-items', '费用项目', '维护门诊收费项目配置。', 'fee-items', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '名称' },
@@ -193,9 +170,9 @@ export const routes: RouteRecordRaw[] = [
         { key: 'name', label: '名称', required: true },
         { key: 'amount', label: '金额', required: true, type: 'number' },
       ]),
-      { path: 'pharmacy', component: PharmacyWorkbenchPage },
-      { path: 'drug-stock', component: DrugStockPage },
-      { path: 'drug-stock-movements', component: DrugStockMovementsPage },
+      { path: 'pharmacy', component: () => import('../pages/PharmacyWorkbenchPage.vue') },
+      { path: 'drug-stock', component: () => import('../pages/DrugStockPage.vue') },
+      { path: 'drug-stock-movements', component: () => import('../pages/DrugStockMovementsPage.vue') },
       adminResourcePage('drugs', '药品目录', '维护药品规格、单位和价格。', 'drugs', [
         { key: 'code', label: '编码' },
         { key: 'name', label: '药品' },
@@ -253,6 +230,17 @@ export const routes: RouteRecordRaw[] = [
         { key: 'detail', label: '详情' },
         { key: 'createdAt', label: '时间' },
       ]),
+      // 体检管理
+      { path: 'exam-packages', component: () => import('../pages/ExamPackagesPage.vue') },
+      { path: 'exam-workbench', component: () => import('../pages/ExamWorkbenchPage.vue') },
+      // 手术管理
+      { path: 'surgery', component: () => import('../pages/SurgeryWorkbenchPage.vue') },
+      // 护理管理
+      { path: 'nursing', component: () => import('../pages/NursingWorkbenchPage.vue') },
+      // 物资耗材
+      { path: 'consumables', component: () => import('../pages/ConsumablesPage.vue') },
+      // 运营分析
+      { path: 'analytics', component: () => import('../pages/AnalyticsPage.vue') },
     ],
   },
 ]

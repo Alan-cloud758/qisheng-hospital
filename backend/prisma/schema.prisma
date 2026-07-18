@@ -85,6 +85,9 @@ enum AuditAction {
   LOGIN
   PAY
   CANCEL
+  REVIEW
+  DISPENSE
+  EXPORT
 }
 
 enum DrugStockMovementType {
@@ -236,6 +239,10 @@ model User {
   insuranceProfiles InsuranceProfile[]
   labRequests LabRequest[]
   imagingRequests ImagingRequest[]
+  examOrders            ExamOrder[]
+  surgeryRequests       SurgeryRequest[]
+  onlineConsultations   OnlineConsultation[]
+  medicationReminders   MedicationReminder[]
 }
 
 model Role {
@@ -306,6 +313,7 @@ model HospitalCampus {
   departments Department[]
   clinicRooms ClinicRoom[]
   wards       Ward[]
+  operatingRooms OperatingRoom[]
 }
 
 model Department {
@@ -372,6 +380,8 @@ model DoctorProfile {
   dischargeRequests DischargeRequest[]
   labRequests LabRequest[]
   imagingRequests ImagingRequest[]
+  surgeryRequests SurgeryRequest[]
+  onlineConsultations OnlineConsultation[]
 }
 
 model PatientProfile {
@@ -405,6 +415,7 @@ model VisitMember {
   patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
   registrations   Registration[]
   inpatientAdmissions InpatientAdmission[]
+  examOrders      ExamOrder[]
 }
 
 model DoctorSchedule {
@@ -521,6 +532,7 @@ model Registration {
   encounter      Encounter?
   changeLogs     RegistrationChangeLog[]
   queueTicket    QueueTicket?
+  surgeryRequests SurgeryRequest[]
 }
 
 model PatientNotification {
@@ -681,6 +693,7 @@ model Ward {
   campus       HospitalCampus @relation(fields: [campusId], references: [id])
   beds         Bed[]
   admissions   InpatientAdmission[]
+  shiftReports ShiftReport[]
 }
 
 model Bed {
@@ -729,6 +742,10 @@ model InpatientAdmission {
   dischargeRequests DischargeRequest[]
   labRequests       LabRequest[]
   imagingRequests   ImagingRequest[]
+  surgeryRequests   SurgeryRequest[]
+  vitalSigns        VitalSignRecord[]
+  nursingAssessments NursingAssessment[]
+  nursingExecutions NursingExecution[]
 
   @@index([userId, status, createdAt])
   @@index([visitMemberId, status])
@@ -1413,4 +1430,382 @@ model AuditLog {
   ip        String?     @db.VarChar(80)
   createdAt DateTime    @default(now())
   user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 体检管理 (Physical Examination)
+// ═══════════════════════════════════════════════════════════════════
+
+enum ExamOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REPORTED
+  CANCELLED
+}
+
+enum ExamItemResultStatus {
+  PENDING
+  COMPLETED
+}
+
+model ExamPackage {
+  id          String           @id @default(cuid())
+  code        String           @unique @db.VarChar(32)
+  name        String           @db.VarChar(120)
+  description String?          @db.VarChar(500)
+  price       Decimal          @db.Decimal(10, 2)
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  items       ExamPackageItem[]
+  orders      ExamOrder[]
+}
+
+model ExamPackageItem {
+  id           String      @id @default(cuid())
+  packageId    String
+  itemType     String      @db.VarChar(20) // LAB / IMAGING / CLINICAL
+  itemId       String      @db.VarChar(64)
+  itemName     String      @db.VarChar(120)
+  sortOrder    Int         @default(0)
+  package      ExamPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
+}
+
+model ExamOrder {
+  id            String         @id @default(cuid())
+  orderNo       String         @unique @db.VarChar(32)
+  status        ExamOrderStatus @default(PENDING)
+  userId        String
+  packageId     String
+  visitMemberId String?
+  scheduledAt   DateTime?
+  completedAt   DateTime?
+  reportSummary String?        @db.Text
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package       ExamPackage    @relation(fields: [packageId], references: [id])
+  visitMember   VisitMember?   @relation(fields: [visitMemberId], references: [id], onDelete: SetNull)
+  items         ExamOrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ExamOrderItem {
+  id           String            @id @default(cuid())
+  orderId      String
+  itemType     String            @db.VarChar(20)
+  itemId       String            @db.VarChar(64)
+  itemName     String            @db.VarChar(120)
+  status       ExamItemResultStatus @default(PENDING)
+  resultValue  String?           @db.VarChar(200)
+  numericValue Float?
+  unit         String?           @db.VarChar(20)
+  abnormalFlag String?           @db.VarChar(20)
+  performedBy  String?           @db.VarChar(80)
+  performedAt  DateTime?
+  order        ExamOrder         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 手术管理 (Surgery / Operation)
+// ═══════════════════════════════════════════════════════════════════
+
+enum SurgeryRequestStatus {
+  REQUESTED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OperatingRoomStatus {
+  AVAILABLE
+  IN_USE
+  CLEANING
+  MAINTENANCE
+}
+
+model OperatingRoom {
+  id         String               @id @default(cuid())
+  code       String               @unique @db.VarChar(32)
+  name       String               @db.VarChar(80)
+  campusId   String?
+  floor      String?              @db.VarChar(20)
+  status     OperatingRoomStatus  @default(AVAILABLE)
+  isActive   Boolean              @default(true)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  campus     HospitalCampus?      @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  surgeries  SurgerySchedule[]
+
+  @@index([campusId])
+}
+
+model SurgeryRequest {
+  id               String               @id @default(cuid())
+  requestNo        String               @unique @db.VarChar(32)
+  status           SurgeryRequestStatus @default(REQUESTED)
+  admissionId      String?
+  registrationId   String?
+  patientUserId    String
+  surgeonId        String
+  anesthesiaType   String               @db.VarChar(60)
+  procedureName    String               @db.VarChar(200)
+  urgency          String               @default("NORMAL") @db.VarChar(20)
+  diagnosis        String?              @db.VarChar(500)
+  plannedDuration  Int?
+  notes            String?              @db.Text
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  patientUser      User?                @relation(fields: [patientUserId], references: [id], onDelete: Cascade)
+  surgeon          DoctorProfile        @relation(fields: [surgeonId], references: [id])
+  admission        InpatientAdmission?  @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  registration     Registration?        @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  schedules        SurgerySchedule[]
+
+  @@index([patientUserId])
+  @@index([surgeonId])
+  @@index([status])
+}
+
+model SurgerySchedule {
+  id              String               @id @default(cuid())
+  requestId       String
+  roomId          String
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  anesthesiaNotes String?              @db.Text
+  surgicalNotes   String?              @db.Text
+  status          String               @default("SCHEDULED") @db.VarChar(30)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  request         SurgeryRequest       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  room            OperatingRoom        @relation(fields: [roomId], references: [id])
+
+  @@index([requestId])
+  @@index([roomId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 护理管理 (Nursing)
+// ═══════════════════════════════════════════════════════════════════
+
+model VitalSignRecord {
+  id           String   @id @default(cuid())
+  admissionId  String
+  recordedAt   DateTime @default(now())
+  temperature  Float?
+  pulse        Int?
+  respiration  Int?
+  systolicBp   Int?
+  diastolicBp  Int?
+  oxygenSaturation Float?
+  painScore    Int?
+  notes        String?  @db.VarChar(500)
+  recordedBy   String?
+  admission    InpatientAdmission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([recordedAt])
+}
+
+model NursingAssessment {
+  id             String   @id @default(cuid())
+  admissionId    String
+  assessmentType String   @db.VarChar(60) // ADMISSION / FALL_RISK / PRESSURE_ULCER / DAILY
+  score          Int?
+  level          String?  @db.VarChar(20) // LOW / MEDIUM / HIGH
+  findings       String?  @db.Text
+  measures       String?  @db.Text
+  assessedBy     String?
+  assessedAt     DateTime @default(now())
+  admission      InpatientAdmission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([assessmentType])
+}
+
+model NursingExecution {
+  id            String   @id @default(cuid())
+  admissionId   String
+  orderId       String?
+  taskType      String   @db.VarChar(60) // INFUSION / INJECTION / DRESSING / MEDICATION / VITAL_SIGNS
+  description   String   @db.VarChar(500)
+  scheduledAt   DateTime
+  executedAt    DateTime?
+  status        String   @default("PENDING") @db.VarChar(20) // PENDING / EXECUTED / SKIPPED
+  notes         String?  @db.VarChar(500)
+  executedBy    String?
+  admission     InpatientAdmission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model ShiftReport {
+  id           String   @id @default(cuid())
+  wardId       String
+  shiftType    String   @db.VarChar(20) // DAY / NIGHT
+  reportDate   DateTime
+  content      String   @db.Text
+  patientCount Int?
+  abnormalNotes String? @db.Text
+  handoverTo   String?  @db.VarChar(80)
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  ward         Ward     @relation(fields: [wardId], references: [id])
+
+  @@index([wardId])
+  @@index([reportDate])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 物资耗材管理 (Medical Consumables)
+// ═══════════════════════════════════════════════════════════════════
+
+enum ConsumableCategory {
+  DISPOSABLE      // 一次性耗材
+  IMPLANT         // 植入性耗材
+  STERILIZATION   // 消毒类
+  DRESSING        // 敷料类
+  REAGENT         // 试剂类
+  OTHER
+}
+
+enum ConsumableMovementType {
+  RECEIVE
+  DISPENSE
+  RETURN
+  ADJUST
+  DAMAGE
+}
+
+model ConsumableCatalog {
+  id           String             @id @default(cuid())
+  code         String             @unique @db.VarChar(32)
+  name         String             @db.VarChar(120)
+  category     ConsumableCategory @default(OTHER)
+  spec         String?            @db.VarChar(120)
+  unit         String             @db.VarChar(20)
+  unitPrice    Decimal            @db.Decimal(10, 2)
+  minStock     Int                @default(10)
+  requiresTracking Boolean         @default(false)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  batches      ConsumableBatch[]
+  movements    ConsumableMovement[]
+
+  @@index([category])
+}
+
+model ConsumableBatch {
+  id              String            @id @default(cuid())
+  catalogId       String
+  batchNo         String            @db.VarChar(64)
+  quantity        Int               @default(0)
+  expiresAt       DateTime?
+  unitCost        Decimal?          @db.Decimal(10, 2)
+  supplierName    String?           @db.VarChar(120)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  catalog         ConsumableCatalog @relation(fields: [catalogId], references: [id])
+  movements       ConsumableMovement[]
+
+  @@unique([catalogId, batchNo])
+  @@index([catalogId])
+}
+
+model ConsumableMovement {
+  id              String                  @id @default(cuid())
+  batchId         String
+  catalogId       String
+  type            ConsumableMovementType
+  quantity        Int
+  beforeQuantity  Int
+  afterQuantity   Int
+  reason          String?                 @db.VarChar(200)
+  departmentId    String?
+  operatorId      String?
+  createdAt       DateTime                @default(now())
+  batch           ConsumableBatch         @relation(fields: [batchId], references: [id])
+  catalog         ConsumableCatalog       @relation(fields: [catalogId], references: [id])
+
+  @@index([batchId])
+  @@index([catalogId])
+  @@index([type])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 患者端增强 (Patient Portal Enhancements)
+// ═══════════════════════════════════════════════════════════════════
+
+enum ConsultationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model OnlineConsultation {
+  id            String             @id @default(cuid())
+  userId        String
+  doctorId      String
+  status        ConsultationStatus @default(PENDING)
+  channel       String             @default("TEXT") @db.VarChar(20) // TEXT / VIDEO
+  symptoms      String?            @db.VarChar(500)
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor        DoctorProfile      @relation(fields: [doctorId], references: [id])
+  messages      ConsultationMessage[]
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model ConsultationMessage {
+  id              String             @id @default(cuid())
+  consultationId  String
+  senderType      String             @db.VarChar(20) // PATIENT / DOCTOR
+  senderId        String
+  content         String             @db.Text
+  messageType     String             @default("TEXT") @db.VarChar(20)
+  createdAt       DateTime           @default(now())
+  consultation    OnlineConsultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@index([consultationId])
+}
+
+model MedicationReminder {
+  id           String   @id @default(cuid())
+  userId       String
+  prescriptionId String?
+  drugName     String   @db.VarChar(120)
+  dosage       String?  @db.VarChar(80)
+  frequency    String   @db.VarChar(80) // 每日两次 / 每日三次 / 每晚一次
+  reminderTime String   @db.VarChar(20) // 08:00, 14:00, 20:00
+  startDate    DateTime
+  endDate      DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
 }

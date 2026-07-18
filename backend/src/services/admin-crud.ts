@@ -27,7 +27,7 @@ export type AdminResourceConfig = {
   orderBy?: Record<string, unknown> | Array<Record<string, unknown>>
   activeField?: 'isActive' | 'status'
   createDefaults?: Record<string, unknown>
-  beforeWrite?: (data: Record<string, unknown>, body: Record<string, unknown>, mode: 'create' | 'update') => Record<string, unknown>
+  beforeWrite?: (data: Record<string, unknown>, body: Record<string, unknown>, mode: 'create' | 'update') => Record<string, unknown> | Promise<Record<string, unknown>>
 }
 
 export function buildContainsFilter(keyword: string | undefined, fields: string[]) {
@@ -42,22 +42,22 @@ export function toPaginationResult<T>(items: T[], total: number, page: number, p
   return { items, pagination: { page, pageSize, total } }
 }
 
-export function hashAccountPassword(data: Record<string, unknown>, body: Record<string, unknown>, mode: 'create' | 'update') {
+export async function hashAccountPassword(data: Record<string, unknown>, body: Record<string, unknown>, mode: 'create' | 'update') {
   const next = { ...data }
   const password = typeof body.password === 'string' ? body.password.trim() : ''
 
   delete next.password
 
   if (password) {
-    next.passwordHash = hashPassword(password)
+    next.passwordHash = await hashPassword(password)
   } else if (mode === 'create') {
-    next.passwordHash = hashPassword('Qisheng@123456')
+    next.passwordHash = await hashPassword('Qisheng@123456')
   }
 
   return next
 }
 
-export function toWritableData(config: AdminResourceConfig, body: Record<string, unknown>, mode: 'create' | 'update') {
+export async function toWritableData(config: AdminResourceConfig, body: Record<string, unknown>, mode: 'create' | 'update') {
   const data: Record<string, unknown> = mode === 'create' ? { ...config.createDefaults } : {}
 
   for (const field of config.writableFields) {
@@ -66,7 +66,7 @@ export function toWritableData(config: AdminResourceConfig, body: Record<string,
     }
   }
 
-  return config.beforeWrite ? config.beforeWrite(data, body, mode) : data
+  return config.beforeWrite ? await config.beforeWrite(data, body, mode) : data
 }
 
 function queryShape(config: AdminResourceConfig) {
@@ -100,7 +100,7 @@ export function registerAdminResourceRoutes(router: Router, resources: Record<st
 
     router.post(`/${resource}`, async (req, res, next) => {
       try {
-        const data = toWritableData(config, req.body ?? {}, 'create')
+        const data = await toWritableData(config, req.body ?? {}, 'create')
         const item = await config.delegate.create({ data, ...queryShape(config) })
 
         await writeAuditLog({
@@ -120,7 +120,7 @@ export function registerAdminResourceRoutes(router: Router, resources: Record<st
 
     router.put(`/${resource}/:id`, async (req, res, next) => {
       try {
-        const data = toWritableData(config, req.body ?? {}, 'update')
+        const data = await toWritableData(config, req.body ?? {}, 'update')
         const item = await config.delegate.update({ where: { id: req.params.id }, data, ...queryShape(config) })
 
         await writeAuditLog({
@@ -154,7 +154,7 @@ export function registerAdminResourceRoutes(router: Router, resources: Record<st
             ? { status: existing.status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE }
             : { isActive: !existing.isActive }
 
-        const normalizedData = config.beforeWrite ? config.beforeWrite(data, { ...existing, ...data }, 'update') : data
+        const normalizedData = config.beforeWrite ? await config.beforeWrite(data, { ...existing, ...data }, 'update') : data
         const item = await config.delegate.update({ where: { id: req.params.id }, data: normalizedData, ...queryShape(config) })
 
         await writeAuditLog({
