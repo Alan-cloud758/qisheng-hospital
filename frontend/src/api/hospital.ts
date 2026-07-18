@@ -674,3 +674,191 @@ export async function fetchAnalyticsDrugSales() {
   const response = await apiClient.get<{ items: Array<{ drugId: string; drugName: string; totalQuantity: number; totalAmount: number }> }>('/admin/analytics/drug-sales')
   return response.data.items
 }
+
+// ═══════════════════════════════════════════════
+// 患者360°视图
+// ═══════════════════════════════════════════════
+
+export async function fetchPatientProfile(patientId: string) {
+  const response = await apiClient.get<{ item: unknown }>(`/admin/patient-view/${patientId}/profile`)
+  return response.data.item
+}
+
+export async function fetchPatientTimeline(patientId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/patient-view/${patientId}/timeline`)
+  return response.data.items
+}
+
+export async function fetchPatientLabResults(patientId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/patient-view/${patientId}/lab-results`)
+  return response.data.items
+}
+
+export async function fetchPatientPrescriptions(patientId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/patient-view/${patientId}/prescriptions`)
+  return response.data.items
+}
+
+// ═══════════════════════════════════════════════
+// 排班日历
+// ═══════════════════════════════════════════════
+
+export async function fetchScheduleCalendar(params: Record<string, unknown>) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/schedule-calendar/calendar', { params })
+  return response.data.items
+}
+
+// ═══════════════════════════════════════════════
+// 报表中心
+// ═══════════════════════════════════════════════
+
+export async function fetchReportDaily(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<Record<string, unknown>>('/admin/reports/daily', { params })
+  return response.data
+}
+
+export async function fetchReportDepartment(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/reports/department-report', { params })
+  return response.data.items
+}
+
+export async function fetchReportDoctor(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/reports/doctor-report', { params })
+  return response.data.items
+}
+
+export async function fetchReportDrug(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/reports/drug-report', { params })
+  return response.data.items
+}
+
+export async function fetchReportRevenueComposition(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/reports/revenue-composition', { params })
+  return response.data.items
+}
+
+export async function fetchReportBed(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<Record<string, unknown>>('/admin/reports/bed-report', { params })
+  return response.data
+}
+
+// ═══════════════════════════════════════════════
+// 药品深度管理
+// ═══════════════════════════════════════════════
+
+export async function fetchSuppliers() {
+  const response = await apiClient.get<PaginatedItems>('/admin/pharmacy-deep/suppliers')
+  return response.data
+}
+
+export async function fetchPurchaseOrders() {
+  const response = await apiClient.get<PaginatedItems>('/admin/pharmacy-deep/purchase-orders')
+  return response.data
+}
+
+export async function createPurchaseOrder(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/admin/pharmacy-deep/purchase-orders', data)
+  return response.data.item
+}
+
+export async function approvePurchaseOrder(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/pharmacy-deep/purchase-orders/${id}/approve`)
+  return response.data.item
+}
+
+export async function receivePurchaseOrder(id: string) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/pharmacy-deep/purchase-orders/${id}/receive`)
+  return response.data.item
+}
+
+export async function fetchStocktakingOrders() {
+  const response = await apiClient.get<PaginatedItems>('/admin/pharmacy-deep/stocktaking')
+  return response.data
+}
+
+export async function fetchDrugPriceChanges() {
+  const response = await apiClient.get<PaginatedItems>('/admin/pharmacy-deep/price-changes')
+  return response.data
+}
+
+// ═══════════════════════════════════════════════
+// 住院深度管理
+// ═══════════════════════════════════════════════
+
+export async function fetchProgressNotes(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/inpatient-deep/progress-notes/${admissionId}`)
+  return response.data.items
+}
+
+export async function createProgressNote(admissionId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/staff/inpatient-deep/progress-notes/${admissionId}`, data)
+  return response.data.item
+}
+
+export async function fetchConsultationRequests(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/inpatient-deep/consultations/${admissionId}`)
+  return response.data.items
+}
+
+export async function fetchTransferRequests(admissionId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/staff/inpatient-deep/transfers/${admissionId}`)
+  return response.data.items
+}
+
+export async function fetchDischargeSummary(admissionId: string) {
+  const response = await apiClient.get<{ item: unknown }>(`/staff/inpatient-deep/discharge-summary/${admissionId}`)
+  return response.data.item
+}
+
+// ═══════════════════════════════════════════════
+// 系统管理
+// ═══════════════════════════════════════════════
+
+export async function fetchSystemConfigs() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/system-config/configs')
+  return response.data.items
+}
+
+export async function updateSystemConfig(key: string, value: string) {
+  const response = await apiClient.put<{ item: unknown }>(`/admin/system-config/configs/${key}`, { configValue: value })
+  return response.data.item
+}
+
+export async function fetchNotificationTemplates() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/system-config/notification-templates')
+  return response.data.items
+}
+
+export async function fetchImportLogs() {
+  const response = await apiClient.get<{ items: unknown[] }>('/admin/system-config/import-logs')
+  return response.data.items
+}
+
+// ═══════════════════════════════════════════════
+// 设备管理
+// ═══════════════════════════════════════════════
+
+export async function fetchEquipment(params: Record<string, unknown> = {}) {
+  const response = await apiClient.get<PaginatedItems>('/admin/equipment', { params })
+  return response.data
+}
+
+export async function createEquipment(data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>('/admin/equipment', data)
+  return response.data.item
+}
+
+export async function updateEquipment(id: string, data: Record<string, unknown>) {
+  const response = await apiClient.put<{ item: unknown }>(`/admin/equipment/${id}`, data)
+  return response.data.item
+}
+
+export async function fetchEquipmentMaintenance(equipmentId: string) {
+  const response = await apiClient.get<{ items: unknown[] }>(`/admin/equipment/${equipmentId}/maintenance`)
+  return response.data.items
+}
+
+export async function createEquipmentMaintenance(equipmentId: string, data: Record<string, unknown>) {
+  const response = await apiClient.post<{ item: unknown }>(`/admin/equipment/${equipmentId}/maintenance`, data)
+  return response.data.item
+}

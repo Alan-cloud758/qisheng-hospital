@@ -203,6 +203,32 @@ const navGroups = [
     label: '运营分析',
     items: [
       { path: '/analytics', label: '运营报表', icon: ICONS.dashboard },
+      { path: '/reports', label: '报表中心', icon: ICONS.fileText },
+    ],
+  },
+  {
+    label: '药品深度',
+    items: [
+      { path: '/purchase-orders', label: '采购管理', icon: ICONS.box },
+    ],
+  },
+  {
+    label: '住院深度',
+    items: [
+      { path: '/inpatient-progress', label: '病程管理', icon: ICONS.clipboard },
+    ],
+  },
+  {
+    label: '设备管理',
+    items: [
+      { path: '/equipment', label: '设备台账', icon: ICONS.scan },
+    ],
+  },
+  {
+    label: '系统管理',
+    items: [
+      { path: '/system-config', label: '系统配置', icon: ICONS.menu },
+      { path: '/schedule-calendar', label: '排班日历', icon: ICONS.calendar },
     ],
   },
 ]

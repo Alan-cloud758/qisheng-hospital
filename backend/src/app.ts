@@ -13,6 +13,7 @@ import { publicRouter } from './routes/public'
 import { radiologyRouter } from './routes/radiology'
 import { staffRouter } from './routes/staff'
 import { analyticsRouter, consumableRouter, examRouter, nursingRouter, patientEnhancedRouter, surgeryRouter } from './routes/new-modules'
+import { patientViewRouter, scheduleCalendarRouter, reportRouter, pharmacyDeepRouter, inpatientDeepRouter, systemConfigRouter, equipmentRouter } from './routes/modules-batch2'
 import { ServiceError } from './services/service-error'
 
 export function createApp() {
@@ -56,6 +57,13 @@ export function createApp() {
   app.use('/api/admin/consumables', consumableRouter)
   app.use('/api/admin/analytics', analyticsRouter)
   app.use('/api/mini/enhanced', patientEnhancedRouter)
+  app.use('/api/admin/patient-view', patientViewRouter)
+  app.use('/api/admin/schedule-calendar', scheduleCalendarRouter)
+  app.use('/api/admin/reports', reportRouter)
+  app.use('/api/admin/pharmacy-deep', pharmacyDeepRouter)
+  app.use('/api/staff/inpatient-deep', inpatientDeepRouter)
+  app.use('/api/admin/system-config', systemConfigRouter)
+  app.use('/api/admin/equipment', equipmentRouter)
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true, service: 'qisheng-hospital-backend' })

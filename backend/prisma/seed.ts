@@ -1633,6 +1633,206 @@ async function seed() {
       })
     }
 
+    // ── Suppliers ─────────────────────────────────────────────────────────────────────
+
+    const suppliers = [
+      { id: 'supplier-1', code: 'SUP001', name: '国药集团医药有限公司', contactName: '张建国', phone: '020-88001001', email: 'zhang.jg@sinopharm-demo.com', address: '广州市越秀区东风东路1号' },
+      { id: 'supplier-2', code: 'SUP002', name: '华润医药商业集团', contactName: '李明珠', phone: '020-88001002', email: 'li.mz@crpharm-demo.com', address: '深圳市福田区深南大道100号' },
+      { id: 'supplier-3', code: 'SUP003', name: '广州医药股份有限公司', contactName: '王志强', phone: '020-88001003', email: 'wang.zq@gzpharm-demo.com', address: '广州市荔湾区沙面北街45号' },
+    ]
+
+    for (const supplier of suppliers) {
+      await prisma.supplier.upsert({
+        where: { code: supplier.code },
+        create: { id: supplier.id, code: supplier.code, name: supplier.name, contactName: supplier.contactName, phone: supplier.phone, email: supplier.email, address: supplier.address },
+        update: { name: supplier.name, contactName: supplier.contactName, phone: supplier.phone, email: supplier.email, address: supplier.address, isActive: true },
+      })
+    }
+
+    // ── Purchase Orders ──────────────────────────────────────────────────────────────
+
+    const purchaseOrders = [
+      { id: 'po-1', orderNo: 'PO20260001', supplierId: 'supplier-1', status: 'RECEIVED' as const, totalAmount: 12500.00, orderedAt: todayAt(-10, 9), receivedAt: todayAt(-5, 14), createdBy: '吴药师', approvedBy: '系统管理员' },
+      { id: 'po-2', orderNo: 'PO20260002', supplierId: 'supplier-2', status: 'APPROVED' as const, totalAmount: 8600.00, orderedAt: todayAt(-3, 10), createdBy: '吴药师', approvedBy: '系统管理员' },
+    ]
+
+    const purchaseOrderItems = [
+      { id: 'poi-1-1', orderId: 'po-1', drugId: 'drug-DRUG001', quantity: 200, unitPrice: 15.00, receivedQty: 200 },
+      { id: 'poi-1-2', orderId: 'po-1', drugId: 'drug-DRUG003', quantity: 150, unitPrice: 18.00, receivedQty: 150 },
+      { id: 'poi-1-3', orderId: 'po-1', drugId: 'drug-DRUG011', quantity: 100, unitPrice: 10.00, receivedQty: 100 },
+      { id: 'poi-2-1', orderId: 'po-2', drugId: 'drug-DRUG014', quantity: 120, unitPrice: 20.00, receivedQty: 0 },
+      { id: 'poi-2-2', orderId: 'po-2', drugId: 'drug-DRUG016', quantity: 80, unitPrice: 40.00, receivedQty: 0 },
+      { id: 'poi-2-3', orderId: 'po-2', drugId: 'drug-DRUG017', quantity: 60, unitPrice: 23.00, receivedQty: 0 },
+    ]
+
+    for (const po of purchaseOrders) {
+      await prisma.purchaseOrder.upsert({
+        where: { orderNo: po.orderNo },
+        create: { id: po.id, orderNo: po.orderNo, supplierId: po.supplierId, status: po.status, totalAmount: po.totalAmount, orderedAt: po.orderedAt, receivedAt: po.receivedAt, createdBy: po.createdBy, approvedBy: po.approvedBy },
+        update: { status: po.status, totalAmount: po.totalAmount, orderedAt: po.orderedAt, receivedAt: po.receivedAt, createdBy: po.createdBy, approvedBy: po.approvedBy },
+      })
+    }
+
+    for (const item of purchaseOrderItems) {
+      await prisma.purchaseOrderItem.upsert({
+        where: { id: item.id },
+        create: { id: item.id, orderId: item.orderId, drugId: item.drugId, quantity: item.quantity, unitPrice: item.unitPrice, receivedQty: item.receivedQty },
+        update: { quantity: item.quantity, unitPrice: item.unitPrice, receivedQty: item.receivedQty },
+      })
+    }
+
+    // ── System Configs ───────────────────────────────────────────────────────────────
+
+    const systemConfigs = [
+      { id: 'syscfg-1', configKey: 'APPOINTMENT_ADVANCE_DAYS', configValue: '7', description: '患者可提前预约的天数' },
+      { id: 'syscfg-2', configKey: 'DRUG_LOW_STOCK_THRESHOLD', configValue: '10', description: '药品库存低量预警阈值' },
+      { id: 'syscfg-3', configKey: 'MAX_QUEUE_SIZE', configValue: '50', description: '单个诊室最大排队人数' },
+      { id: 'syscfg-4', configKey: 'REGISTRATION_CANCEL_DEADLINE_HOURS', configValue: '2', description: '挂号取消截止时间（就诊前小时数）' },
+      { id: 'syscfg-5', configKey: 'EXAM_REPORT_TEMPLATE', configValue: '<h2>{{hospitalName}}体检报告</h2><p>姓名：{{patientName}}</p><p>体检日期：{{examDate}}</p><p>体检结果：{{summary}}</p>', description: '体检报告HTML模板' },
+    ]
+
+    for (const cfg of systemConfigs) {
+      await prisma.systemConfig.upsert({
+        where: { configKey: cfg.configKey },
+        create: { id: cfg.id, configKey: cfg.configKey, configValue: cfg.configValue, description: cfg.description },
+        update: { configValue: cfg.configValue, description: cfg.description },
+      })
+    }
+
+    // ── Notification Templates ───────────────────────────────────────────────────────
+
+    const notificationTemplates = [
+      { id: 'ntpl-1', code: 'APPOINTMENT_REMINDER', name: '预约提醒', channel: 'APP', subject: '就诊提醒', body: '尊敬的{{patientName}}，您预约了{{doctorName}}医生{{date}}{{period}}的门诊，请按时到{{department}}就诊。' },
+      { id: 'ntpl-2', code: 'EXAM_READY', name: '体检报告就绪', channel: 'APP', subject: '体检报告已出', body: '尊敬的{{patientName}}，您于{{examDate}}的体检报告已出具，请登录系统查看详情或到服务台领取纸质报告。' },
+      { id: 'ntpl-3', code: 'DISCHARGE_NOTICE', name: '出院通知', channel: 'APP', subject: '出院手续办理通知', body: '尊敬的{{patientName}}，您的出院手续已审批通过，请到住院收费处办理结算，出院带药请到住院药房领取。' },
+    ]
+
+    for (const tpl of notificationTemplates) {
+      await prisma.notificationTemplate.upsert({
+        where: { code: tpl.code },
+        create: { id: tpl.id, code: tpl.code, name: tpl.name, channel: tpl.channel, subject: tpl.subject, body: tpl.body },
+        update: { name: tpl.name, channel: tpl.channel, subject: tpl.subject, body: tpl.body, isActive: true },
+      })
+    }
+
+    // ── Equipment ────────────────────────────────────────────────────────────────────
+
+    const equipmentList = [
+      { id: 'equip-1', code: 'EQ-001', name: '彩色超声诊断仪', category: '影像设备', model: 'DC-80', manufacturer: '迈瑞医疗', serialNo: 'MR-US-2024-001', departmentId: 'dept-oph', location: '超声检查室1', status: 'AVAILABLE' as const, purchaseDate: todayAt(-365, 0), warrantyExpiry: todayAt(365, 0) },
+      { id: 'equip-2', code: 'EQ-002', name: '数字化X射线摄影系统', category: '影像设备', model: 'DR-DigiRad 6000', manufacturer: '西门子医疗', serialNo: 'SIEMENS-DR-2023-042', departmentId: 'dept-orth', location: '放射科DR室', status: 'IN_USE' as const, purchaseDate: todayAt(-730, 0), warrantyExpiry: todayAt(180, 0) },
+      { id: 'equip-3', code: 'EQ-003', name: '64排螺旋CT', category: '影像设备', model: 'SOMATOM Definition', manufacturer: '西门子医疗', serialNo: 'SIEMENS-CT-2023-018', departmentId: 'dept-neuro', location: 'CT检查室', status: 'IN_USE' as const, purchaseDate: todayAt(-540, 0), warrantyExpiry: todayAt(540, 0) },
+      { id: 'equip-4', code: 'EQ-004', name: '12导联心电图机', category: '诊断设备', model: 'SE-1201', manufacturer: '理邦仪器', serialNo: 'EDAN-ECG-2024-055', departmentId: 'dept-card', location: '心电图室', status: 'AVAILABLE' as const, purchaseDate: todayAt(-200, 0), warrantyExpiry: todayAt(520, 0) },
+      { id: 'equip-5', code: 'EQ-005', name: '除颤仪', category: '急救设备', model: 'BeneHeart D6', manufacturer: '迈瑞医疗', serialNo: 'MR-DEF-2024-008', departmentId: 'dept-im', location: '急诊抢救室', status: 'AVAILABLE' as const, purchaseDate: todayAt(-180, 0), warrantyExpiry: todayAt(540, 0) },
+      { id: 'equip-6', code: 'EQ-006', name: '呼吸机', category: '生命支持设备', model: 'SV800', manufacturer: '迈瑞医疗', serialNo: 'MR-VENT-2023-012', departmentId: 'dept-im', location: 'ICU 1号床位', status: 'IN_USE' as const, purchaseDate: todayAt(-400, 0), warrantyExpiry: todayAt(320, 0) },
+      { id: 'equip-7', code: 'EQ-007', name: '输液泵', category: '治疗设备', model: 'BeneFusion SP3', manufacturer: '迈瑞医疗', serialNo: 'MR-INF-2024-101', departmentId: 'dept-im', location: '内科一病区护士站', status: 'AVAILABLE' as const, purchaseDate: todayAt(-120, 0), warrantyExpiry: todayAt(600, 0) },
+      { id: 'equip-8', code: 'EQ-008', name: '多参数病人监护仪', category: '监护设备', model: 'BeneVision N19', manufacturer: '迈瑞医疗', serialNo: 'MR-MON-2024-033', departmentId: 'dept-im', location: 'ICU护士站', status: 'IN_USE' as const, purchaseDate: todayAt(-150, 0), warrantyExpiry: todayAt(570, 0) },
+    ]
+
+    for (const equip of equipmentList) {
+      await prisma.equipment.upsert({
+        where: { code: equip.code },
+        create: { id: equip.id, code: equip.code, name: equip.name, category: equip.category, model: equip.model, manufacturer: equip.manufacturer, serialNo: equip.serialNo, departmentId: equip.departmentId, location: equip.location, status: equip.status, purchaseDate: equip.purchaseDate, warrantyExpiry: equip.warrantyExpiry },
+        update: { name: equip.name, category: equip.category, model: equip.model, manufacturer: equip.manufacturer, serialNo: equip.serialNo, departmentId: equip.departmentId, location: equip.location, status: equip.status, purchaseDate: equip.purchaseDate, warrantyExpiry: equip.warrantyExpiry, isActive: true },
+      })
+    }
+
+    // ── Equipment Maintenance ────────────────────────────────────────────────────────
+
+    const equipmentMaintenances = [
+      { id: 'emaint-1', equipmentId: 'equip-1', maintenanceType: 'SCHEDULED', description: '超声探头校准与系统软件更新', cost: 1200.00, performedBy: '迈瑞工程师刘工', performedAt: todayAt(-30, 9), nextDueDate: todayAt(150, 9) },
+      { id: 'emaint-2', equipmentId: 'equip-2', maintenanceType: 'SCHEDULED', description: 'DR球管寿命检测与滤线栅清洁', cost: 800.00, performedBy: '西门子售后张工', performedAt: todayAt(-45, 10), nextDueDate: todayAt(135, 10) },
+      { id: 'emaint-3', equipmentId: 'equip-3', maintenanceType: 'CALIBRATION', description: 'CT图像质量校准与剂量检测', cost: 2500.00, performedBy: '西门子售后张工', performedAt: todayAt(-15, 9), nextDueDate: todayAt(165, 9) },
+      { id: 'emaint-4', equipmentId: 'equip-5', maintenanceType: 'SCHEDULED', description: '除颤仪电池检测与放电测试', cost: 300.00, performedBy: '设备科王技师', performedAt: todayAt(-7, 14), nextDueDate: todayAt(83, 14) },
+      { id: 'emaint-5', equipmentId: 'equip-6', maintenanceType: 'REPAIR', description: '呼吸机呼气阀更换维修', cost: 3500.00, performedBy: '迈瑞工程师刘工', performedAt: todayAt(-20, 10), nextDueDate: todayAt(70, 10) },
+      { id: 'emaint-6', equipmentId: 'equip-8', maintenanceType: 'SCHEDULED', description: '监护仪传感器校准与报警测试', cost: 600.00, performedBy: '设备科王技师', performedAt: todayAt(-5, 15), nextDueDate: todayAt(85, 15) },
+    ]
+
+    for (const maint of equipmentMaintenances) {
+      await prisma.equipmentMaintenance.upsert({
+        where: { id: maint.id },
+        create: { id: maint.id, equipmentId: maint.equipmentId, maintenanceType: maint.maintenanceType, description: maint.description, cost: maint.cost, performedBy: maint.performedBy, performedAt: maint.performedAt, nextDueDate: maint.nextDueDate },
+        update: { maintenanceType: maint.maintenanceType, description: maint.description, cost: maint.cost, performedBy: maint.performedBy, performedAt: maint.performedAt, nextDueDate: maint.nextDueDate },
+      })
+    }
+
+    // ── Progress Notes ───────────────────────────────────────────────────────────────
+
+    const progressNotes = [
+      { id: 'pnote-1', admissionId: 'ip-demo-1', noteType: 'FIRST', content: '患者因"发热伴咳嗽3天"入院。入院查体：T 38.2℃，P 92次/分，R 20次/分，BP 125/80mmHg。双肺呼吸音粗，右下肺可闻及湿啰音。胸部CT示右下肺炎症。初步诊断：社区获得性肺炎。予以抗感染、化痰、退热治疗。', doctorId: outpatientSeedPlan.doctors[0].id, recordedAt: todayAt(-8, 14) },
+      { id: 'pnote-2', admissionId: 'ip-demo-1', noteType: 'DAILY', content: '患者抗感染治疗第3天，体温降至37.1℃，咳嗽较前减轻，咳痰量减少。查体：双肺湿啰音减少。继续当前抗感染方案，嘱患者多饮水、注意休息。', doctorId: outpatientSeedPlan.doctors[0].id, recordedAt: todayAt(-5, 10) },
+      { id: 'pnote-3', admissionId: 'ip-demo-2', noteType: 'FIRST', content: '患者因"腰痛伴左下肢放射痛2周"入院。腰椎MRI示L4/5椎间盘突出。查体：L4/5棘突旁压痛，左直腿抬高试验阳性(30°)。初步诊断：腰椎间盘突出症。予以脱水、营养神经、理疗等保守治疗。', doctorId: outpatientSeedPlan.doctors[7].id, recordedAt: todayAt(-7, 11) },
+      { id: 'pnote-4', admissionId: 'ip-demo-2', noteType: 'DAILY', content: '患者保守治疗第4天，腰痛较入院时明显缓解，左下肢放射痛减轻。查体：左直腿抬高试验较前改善(50°)。继续脱水消肿、营养神经治疗，增加腰背肌功能锻炼。', doctorId: outpatientSeedPlan.doctors[7].id, recordedAt: todayAt(-3, 10) },
+      { id: 'pnote-5', admissionId: 'ip-demo-3', noteType: 'FIRST', content: '患者因"口渴、多饮、多尿1月，血糖控制不佳"入院。既往2型糖尿病史5年。入院随机血糖18.6mmol/L，HbA1c 9.2%。初步诊断：2型糖尿病 血糖控制不佳。调整降糖方案为胰岛素强化治疗。', doctorId: outpatientSeedPlan.doctors[10].id, recordedAt: todayAt(-6, 15) },
+      { id: 'pnote-6', admissionId: 'ip-demo-3', noteType: 'DAILY', content: '胰岛素强化治疗第3天，空腹血糖6.8mmol/L，餐后2h血糖9.2mmol/L，血糖较前明显下降。无低血糖反应。继续当前胰岛素方案，加强饮食指导和运动宣教。', doctorId: outpatientSeedPlan.doctors[10].id, recordedAt: todayAt(-3, 9) },
+    ]
+
+    for (const note of progressNotes) {
+      await prisma.inpatientProgressNote.upsert({
+        where: { id: note.id },
+        create: { id: note.id, admissionId: note.admissionId, noteType: note.noteType, content: note.content, doctorId: mappedId(idMaps.doctorProfileIds, note.doctorId), recordedAt: note.recordedAt },
+        update: { noteType: note.noteType, content: note.content, doctorId: mappedId(idMaps.doctorProfileIds, note.doctorId), recordedAt: note.recordedAt },
+      })
+    }
+
+    // ── Discharge Summary ────────────────────────────────────────────────────────────
+
+    await prisma.dischargeSummary.upsert({
+      where: { admissionId: 'ip-demo-1' },
+      create: {
+        id: 'ds-1',
+        admissionId: 'ip-demo-1',
+        diagnosis: '社区获得性肺炎',
+        treatmentSummary: '患者入院后予以头孢曲松钠2g静滴抗感染、氨溴索化痰、布洛芬退热等治疗。住院期间体温逐步恢复正常，咳嗽明显减轻，复查胸部CT示炎症较前吸收。住院8天，病情好转出院。',
+        dischargeOrders: '1. 口服阿莫西林胶囊0.5g tid x 5天；2. 口服氨溴索口服液10ml tid；3. 注意休息，避免受凉；4. 1周后复查胸部CT。',
+        followUpDate: todayAt(7, 9),
+        followUpDept: '呼吸内科',
+        doctorId: mappedId(idMaps.doctorProfileIds, outpatientSeedPlan.doctors[0].id),
+      },
+      update: {
+        diagnosis: '社区获得性肺炎',
+        treatmentSummary: '患者入院后予以头孢曲松钠2g静滴抗感染、氨溴索化痰、布洛芬退热等治疗。住院期间体温逐步恢复正常，咳嗽明显减轻，复查胸部CT示炎症较前吸收。住院8天，病情好转出院。',
+        dischargeOrders: '1. 口服阿莫西林胶囊0.5g tid x 5天；2. 口服氨溴索口服液10ml tid；3. 注意休息，避免受凉；4. 1周后复查胸部CT。',
+        followUpDate: todayAt(7, 9),
+        followUpDept: '呼吸内科',
+        doctorId: mappedId(idMaps.doctorProfileIds, outpatientSeedPlan.doctors[0].id),
+      },
+    })
+
+    // ── Consultation Requests ────────────────────────────────────────────────────────
+
+    const consultationRequests = [
+      { id: 'consult-1', admissionId: 'ip-demo-1', requestingDeptId: 'dept-im', consultingDeptId: 'dept-resp', reason: '患者肺炎治疗5天后仍间断低热，请呼吸内科会诊协助调整抗感染方案。', opinion: '建议更换为莫西沙星0.4g qd静滴，复查胸部CT评估炎症吸收情况。', status: 'COMPLETED', requestedBy: '陈明医生', consultedBy: '孙越医生', requestedAt: todayAt(-4, 10), completedAt: todayAt(-3, 14) },
+      { id: 'consult-2', admissionId: 'ip-demo-2', requestingDeptId: 'dept-orth', consultingDeptId: 'dept-rehab', reason: '腰椎间盘突出症患者保守治疗中，请康复科会诊制定康复训练方案。', opinion: '建议行腰椎牵引治疗每日1次，配合核心肌群训练和低频电疗。', status: 'COMPLETED', requestedBy: '周远医生', consultedBy: '姜诚医生', requestedAt: todayAt(-5, 9), completedAt: todayAt(-4, 10) },
+      { id: 'consult-3', admissionId: 'ip-demo-3', requestingDeptId: 'dept-endo', consultingDeptId: 'dept-card', reason: '糖尿病患者入院后心电图示ST-T改变，请心内科会诊评估心脏情况。', opinion: '建议行心脏超声和24小时动态心电图，暂予以参松养心胶囊口服。', status: 'REQUESTED', requestedBy: '何静医生', requestedAt: todayAt(-1, 16) },
+    ]
+
+    for (const consult of consultationRequests) {
+      await prisma.consultationRequest.upsert({
+        where: { id: consult.id },
+        create: { id: consult.id, admissionId: consult.admissionId, requestingDeptId: consult.requestingDeptId, consultingDeptId: consult.consultingDeptId, reason: consult.reason, opinion: consult.opinion, status: consult.status, requestedBy: consult.requestedBy, consultedBy: consult.consultedBy, requestedAt: consult.requestedAt, completedAt: consult.completedAt },
+        update: { reason: consult.reason, opinion: consult.opinion, status: consult.status, requestedBy: consult.requestedBy, consultedBy: consult.consultedBy, requestedAt: consult.requestedAt, completedAt: consult.completedAt },
+      })
+    }
+
+    // ── Waitlist Entries ─────────────────────────────────────────────────────────────
+
+    const waitlistEntries = [
+      { id: 'waitlist-1', userId: 'patient-user-9', doctorId: outpatientSeedPlan.doctors[8].id, departmentId: 'dept-card', preferredDate: todayAt(3, 0), status: 'WAITING' },
+      { id: 'waitlist-2', userId: 'patient-user-10', doctorId: outpatientSeedPlan.doctors[9].id, departmentId: 'dept-neuro', preferredDate: todayAt(5, 0), status: 'WAITING' },
+      { id: 'waitlist-3', userId: 'patient-user-11', doctorId: outpatientSeedPlan.doctors[0].id, departmentId: 'dept-im', preferredDate: todayAt(2, 0), status: 'NOTIFIED' },
+      { id: 'waitlist-4', userId: 'patient-user-12', doctorId: outpatientSeedPlan.doctors[7].id, departmentId: 'dept-orth', preferredDate: todayAt(4, 0), status: 'WAITING' },
+    ]
+
+    for (const entry of waitlistEntries) {
+      const userId = mappedId(idMaps.userIds, entry.userId)
+      const doctorId = mappedId(idMaps.doctorProfileIds, entry.doctorId)
+      await prisma.waitlistEntry.upsert({
+        where: { id: entry.id },
+        create: { id: entry.id, userId, doctorId, departmentId: entry.departmentId, preferredDate: entry.preferredDate, status: entry.status },
+        update: { userId, doctorId, departmentId: entry.departmentId, preferredDate: entry.preferredDate, status: entry.status },
+      })
+    }
+
     console.log('Seed completed:', {
       campuses: outpatientSeedPlan.campuses.length,
       departments: outpatientSeedPlan.departments.length,
@@ -1653,6 +1853,15 @@ async function seed() {
       clinicalTemplates: hisExpansionSeedPlan.clinicalTemplates.length,
       stockBatches: hisExpansionSeedPlan.stockBatches.length,
       insuranceSettlements: 10,
+      suppliers: suppliers.length,
+      purchaseOrders: purchaseOrders.length,
+      systemConfigs: systemConfigs.length,
+      notificationTemplates: notificationTemplates.length,
+      equipment: equipmentList.length,
+      equipmentMaintenances: equipmentMaintenances.length,
+      progressNotes: progressNotes.length,
+      consultationRequests: consultationRequests.length,
+      waitlistEntries: waitlistEntries.length,
     })
   } finally {
     await prisma.$disconnect()

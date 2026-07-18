@@ -241,6 +241,20 @@ export const routes: RouteRecordRaw[] = [
       { path: 'consumables', component: () => import('../pages/ConsumablesPage.vue') },
       // 运营分析
       { path: 'analytics', component: () => import('../pages/AnalyticsPage.vue') },
+      // 患者360°全景
+      { path: 'patient-detail/:patientId', component: () => import('../pages/PatientDetailPage.vue'), props: true },
+      // 排班日历
+      { path: 'schedule-calendar', component: () => import('../pages/ScheduleCalendarPage.vue') },
+      // 报表中心
+      { path: 'reports', component: () => import('../pages/ReportsPage.vue') },
+      // 采购管理
+      { path: 'purchase-orders', component: () => import('../pages/PurchaseOrderPage.vue') },
+      // 住院深度管理
+      { path: 'inpatient-detail-2', component: () => import('../pages/InpatientDetailPage2.vue') },
+      // 系统配置
+      { path: 'system-config', component: () => import('../pages/SystemConfigPage.vue') },
+      // 设备管理
+      { path: 'equipment', component: () => import('../pages/EquipmentPage.vue') },
     ],
   },
 ]

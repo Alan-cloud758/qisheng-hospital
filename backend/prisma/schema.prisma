@@ -243,6 +243,8 @@ model User {
   surgeryRequests       SurgeryRequest[]
   onlineConsultations   OnlineConsultation[]
   medicationReminders   MedicationReminder[]
+  waitlistEntries       WaitlistEntry[]
+  adverseDrugReactions  AdverseDrugReaction[]
 }
 
 model Role {
@@ -333,6 +335,7 @@ model Department {
   scheduleTemplates ScheduleTemplate[]
   registrations Registration[]
   queueTickets QueueTicket[]
+  equipment    Equipment[]
 }
 
 model ClinicRoom {
@@ -746,6 +749,10 @@ model InpatientAdmission {
   vitalSigns        VitalSignRecord[]
   nursingAssessments NursingAssessment[]
   nursingExecutions NursingExecution[]
+  progressNotes     InpatientProgressNote[]
+  consultationRequests ConsultationRequest[]
+  transferRequests  TransferRequest[]
+  dischargeSummary  DischargeSummary?
 
   @@index([userId, status, createdAt])
   @@index([visitMemberId, status])
@@ -1224,6 +1231,10 @@ model DrugCatalog {
   stockMovements DrugStockMovement[]
   stockAlerts DrugStockAlert[]
   prescriptionTemplateItems PrescriptionTemplateItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  stocktakingItems   StocktakingItem[]
+  priceChanges       DrugPriceChange[]
+  adverseReactions   AdverseDrugReaction[]
 }
 
 model MedicalRecordTemplate {
@@ -1808,4 +1819,328 @@ model MedicationReminder {
 
   @@index([userId])
   @@index([isActive])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 排班日历增强
+// ═══════════════════════════════════════════════════════════════════
+
+model WaitlistEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  doctorId     String
+  departmentId String
+  preferredDate DateTime?
+  status       String   @default("WAITING") @db.VarChar(20) // WAITING / NOTIFIED / EXPIRED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ScheduleChangeRequest {
+  id           String   @id @default(cuid())
+  scheduleId   String
+  doctorId     String
+  changeType   String   @db.VarChar(20) // SUSPEND / RESUME / MODIFY
+  reason       String?  @db.VarChar(500)
+  status       String   @default("PENDING") @db.VarChar(20) // PENDING / APPROVED / REJECTED
+  approvedBy   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([doctorId])
+  @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 药品深度管理
+// ═══════════════════════════════════════════════════════════════════
+
+model Supplier {
+  id           String   @id @default(cuid())
+  code         String   @unique @db.VarChar(32)
+  name         String   @db.VarChar(120)
+  contactName  String?  @db.VarChar(80)
+  phone        String?  @db.VarChar(30)
+  email        String?  @db.VarChar(120)
+  address      String?  @db.VarChar(255)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  purchaseOrders PurchaseOrder[]
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  orderNo      String              @unique @db.VarChar(32)
+  supplierId   String
+  status       PurchaseOrderStatus @default(DRAFT)
+  totalAmount  Decimal             @default(0) @db.Decimal(12, 2)
+  orderedAt    DateTime?
+  receivedAt   DateTime?
+  createdBy    String?
+  approvedBy   String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  items        PurchaseOrderItem[]
+
+  @@index([supplierId])
+  @@index([status])
+}
+
+model PurchaseOrderItem {
+  id              String         @id @default(cuid())
+  orderId         String
+  drugId          String
+  quantity        Int
+  unitPrice       Decimal        @db.Decimal(10, 2)
+  receivedQty     Int            @default(0)
+  order           PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  drug            DrugCatalog    @relation(fields: [drugId], references: [id])
+
+  @@index([orderId])
+}
+
+model StocktakingOrder {
+  id           String               @id @default(cuid())
+  orderNo      String               @unique @db.VarChar(32)
+  status       String               @default("DRAFT") @db.VarChar(20) // DRAFT / IN_PROGRESS / COMPLETED
+  notes        String?              @db.Text
+  createdBy    String?
+  completedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  items        StocktakingItem[]
+
+  @@index([status])
+}
+
+model StocktakingItem {
+  id              String            @id @default(cuid())
+  orderId         String
+  drugId          String
+  systemQuantity  Int
+  actualQuantity  Int?
+  difference      Int?
+  order           StocktakingOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  drug            DrugCatalog       @relation(fields: [drugId], references: [id])
+
+  @@index([orderId])
+}
+
+model DrugPriceChange {
+  id           String      @id @default(cuid())
+  drugId       String
+  oldPrice     Decimal     @db.Decimal(10, 2)
+  newPrice     Decimal     @db.Decimal(10, 2)
+  reason       String?     @db.VarChar(200)
+  status       String      @default("PENDING") @db.VarChar(20) // PENDING / APPROVED / REJECTED
+  requestedBy  String?
+  approvedBy   String?
+  createdAt    DateTime    @default(now())
+  drug         DrugCatalog @relation(fields: [drugId], references: [id])
+
+  @@index([drugId])
+  @@index([status])
+}
+
+model AdverseDrugReaction {
+  id           String   @id @default(cuid())
+  patientUserId String
+  drugId       String
+  reactionDesc String   @db.Text
+  severity     String   @db.VarChar(20) // MILD / MODERATE / SEVERE
+  reportedBy   String?
+  reportedAt   DateTime @default(now())
+  status       String   @default("REPORTED") @db.VarChar(20) // REPORTED / INVESTIGATED / RESOLVED
+  patientUser  User     @relation(fields: [patientUserId], references: [id], onDelete: Cascade, map: "AdverseDrugReaction_patientUser_fkey")
+  drug         DrugCatalog @relation(fields: [drugId], references: [id])
+
+  @@index([patientUserId])
+  @@index([drugId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 住院深度管理
+// ═══════════════════════════════════════════════════════════════════
+
+model InpatientProgressNote {
+  id           String              @id @default(cuid())
+  admissionId  String
+  noteType     String              @db.VarChar(30) // FIRST / DAILY / SUPERVISORY / DISCHARGE
+  content      String              @db.Text
+  doctorId     String?
+  recordedAt   DateTime            @default(now())
+  admission    InpatientAdmission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([noteType])
+}
+
+model ConsultationRequest {
+  id               String              @id @default(cuid())
+  admissionId      String
+  requestingDeptId String
+  consultingDeptId String
+  reason           String              @db.Text
+  opinion          String?             @db.Text
+  status           String              @default("PREQUESTED") @db.VarChar(20) // REQUESTED / COMPLETED / CANCELLED
+  requestedBy      String?
+  consultedBy      String?
+  requestedAt      DateTime            @default(now())
+  completedAt      DateTime?
+  admission        InpatientAdmission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([status])
+}
+
+model TransferRequest {
+  id           String              @id @default(cuid())
+  admissionId  String
+  fromWardId   String
+  toWardId     String
+  fromBedId    String?
+  toBedId      String?
+  reason       String?             @db.VarChar(500)
+  status       String              @default("PENDING") @db.VarChar(20) // PENDING / COMPLETED / CANCELLED
+  requestedBy  String?
+  completedAt  DateTime?
+  createdAt    DateTime            @default(now())
+  admission    InpatientAdmission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+  @@index([status])
+}
+
+model DischargeSummary {
+  id              String              @id @default(cuid())
+  admissionId     String              @unique
+  diagnosis       String              @db.VarChar(500)
+  treatmentSummary String             @db.Text
+  dischargeOrders String?             @db.Text
+  followUpDate    DateTime?
+  followUpDept    String?             @db.VarChar(120)
+  doctorId        String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  admission       InpatientAdmission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 系统管理扩展
+// ═══════════════════════════════════════════════════════════════════
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  configKey   String   @unique @db.VarChar(120)
+  configValue String   @db.Text
+  description String?  @db.VarChar(255)
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+}
+
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  code        String   @unique @db.VarChar(64)
+  name        String   @db.VarChar(120)
+  channel     String   @db.VarChar(20) // SMS / WECHAT / APP
+  subject     String?  @db.VarChar(200)
+  body        String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DataImportLog {
+  id          String   @id @default(cuid())
+  importType  String   @db.VarChar(60) // PATIENT / DRUG / SCHEDULE
+  fileName    String   @db.VarChar(255)
+  totalRows   Int
+  successRows Int
+  failedRows  Int
+  errorDetail String?  @db.Text
+  importedBy  String?
+  importedAt  DateTime @default(now())
+
+  @@index([importType])
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Module: 设备管理
+// ═══════════════════════════════════════════════════════════════════
+
+enum EquipmentStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  CALIBRATION
+  RETIRED
+}
+
+model Equipment {
+  id             String          @id @default(cuid())
+  code           String          @unique @db.VarChar(32)
+  name           String          @db.VarChar(120)
+  category       String          @db.VarChar(60)
+  model          String?         @db.VarChar(80)
+  manufacturer   String?         @db.VarChar(120)
+  serialNo       String?         @db.VarChar(80)
+  departmentId   String?
+  location       String?         @db.VarChar(120)
+  status         EquipmentStatus @default(AVAILABLE)
+  purchaseDate   DateTime?
+  warrantyExpiry DateTime?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  department     Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  maintenanceRecords EquipmentMaintenance[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@index([category])
+}
+
+model EquipmentMaintenance {
+  id            String   @id @default(cuid())
+  equipmentId   String
+  maintenanceType String @db.VarChar(30) // SCHEDULED / REPAIR / CALIBRATION
+  description   String   @db.Text
+  cost          Decimal? @db.Decimal(10, 2)
+  performedBy   String?
+  performedAt   DateTime @default(now())
+  nextDueDate   DateTime?
+  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([equipmentId])
+  @@index([maintenanceType])
+}
+
+model EquipmentUsageLog {
+  id            String   @id @default(cuid())
+  equipmentId   String
+  usedBy        String?
+  departmentId  String?
+  purpose       String?  @db.VarChar(200)
+  startTime     DateTime
+  endTime       DateTime?
+  notes         String?  @db.VarChar(500)
+
+  @@index([equipmentId])
+  @@index([startTime])
 }

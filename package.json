@@ -27,7 +27,8 @@
     "lint-staged": "^15.5.2"
   },
   "lint-staged": {
-    "*.{ts,vue}": "eslint --fix",
-    "*.{ts,vue,json,css,md}": "prettier --write"
+    "backend/**/*.{ts}": "npm --prefix backend run lint -- --fix",
+    "frontend/**/*.{ts,vue}": "npm --prefix frontend run lint -- --fix",
+    "*.{ts,vue,json,css,md}": "prettier --write --config backend/.prettierrc* frontend/.prettierrc* .prettierrc*"
   }
 }
