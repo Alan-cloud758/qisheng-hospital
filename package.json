@@ -29,6 +29,6 @@
   "lint-staged": {
     "backend/**/*.{ts}": "npm --prefix backend run lint -- --fix",
     "frontend/**/*.{ts,vue}": "npm --prefix frontend run lint -- --fix",
-    "*.{ts,vue,json,css,md}": "prettier --write --config backend/.prettierrc* frontend/.prettierrc* .prettierrc*"
+    "*.{ts,vue,json,css,md}": "npx prettier --write --config backend/.prettierrc* frontend/.prettierrc* .prettierrc*"
   }
 }
